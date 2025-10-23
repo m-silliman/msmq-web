@@ -1,0 +1,34 @@
+@namespace MsMqApp.Components.Shared
+@inherits MessageRowBase
+
+<div class="message-row @GetRowClass()" @onclick="OnRowClickAsync">
+    <div class="message-row-cell message-cell-select" @onclick:stopPropagation="true">
+        <input type="checkbox"
+               class="form-check-input"
+               checked="@IsSelected"
+               @onchange="OnCheckboxChangedAsync"
+               aria-label="@GetCheckboxAriaLabel()" />
+    </div>
+
+    <div class="message-row-cell message-cell-label" title="@Message.Label">
+        <span class="message-label-text">@Message.Label</span>
+        @if (ShowId)
+        {
+            <span class="message-id-text">@Message.Id</span>
+        }
+    </div>
+
+    <div class="message-row-cell message-cell-priority">
+        <span class="badge @GetPriorityBadgeClass()">
+            @GetPriorityText()
+        </span>
+    </div>
+
+    <div class="message-row-cell message-cell-arrived" title="@Message.ArrivedTime.ToString("yyyy-MM-dd HH:mm:ss")">
+        @GetFormattedTime()
+    </div>
+
+    <div class="message-row-cell message-cell-size" title="@Message.Body.SizeBytes.ToString("N0") bytes">
+        @Message.FormattedSize
+    </div>
+</div>

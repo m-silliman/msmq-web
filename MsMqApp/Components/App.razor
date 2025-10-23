@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["MsMqApp.styles.css"]" />
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet />
+    
+    <!-- Theme initialization script - runs before Blazor hydration -->
+    <script>
+        (function() {
+            // Initialize theme immediately on page load before Blazor takes over
+            let storedTheme = localStorage.getItem('msmq-app-theme') || 'dark';
+            console.log('[Theme] Initializing theme from localStorage:', storedTheme);
+            
+            function applyTheme(theme) {
+                console.log('[Theme] Applying theme:', theme);
+                
+                // Apply theme immediately to prevent flash
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                
+                // Set CSS custom properties immediately for instant effect
+                if (theme === 'dark') {
+                    document.documentElement.style.setProperty('--bs-body-bg', '#212529');
+                    document.documentElement.style.setProperty('--bs-body-color', '#ffffff');
+                    document.documentElement.style.setProperty('--bs-border-color', '#495057');
+                } else {
+                    document.documentElement.style.setProperty('--bs-body-bg', '#ffffff');
+                    document.documentElement.style.setProperty('--bs-body-color', '#212529');
+                    document.documentElement.style.setProperty('--bs-border-color', '#dee2e6');
+                }
+                
+                // Also add theme class to body for additional compatibility
+                if (document.body) {
+                    document.body.classList.remove('theme-light', 'theme-dark');
+                    document.body.classList.add('theme-' + theme);
+                    document.body.setAttribute('data-bs-theme', theme);
+                }
+                
+                // Store the theme
+                localStorage.setItem('msmq-app-theme', theme);
+                storedTheme = theme;
+            }
+            
+            // Expose globally for ThemeService to use
+            window.applyTheme = applyTheme;
+            
+            // Apply initial theme
+            applyTheme(storedTheme);
+            
+            // Monitor for theme changes and reapply immediately if lost
+            const checkTheme = function() {
+                const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+                if (!currentTheme || (currentTheme !== storedTheme && currentTheme !== 'light' && currentTheme !== 'dark')) {
+                    console.log('[Theme] Theme lost, reapplying:', storedTheme);
+                    applyTheme(storedTheme);
+                }
+            };
+            
+            // Check theme very frequently for maximum persistence
+            setInterval(checkTheme, 25);
+            
+            // Observer for attribute changes
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'data-bs-theme') {
+                        const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+                        console.log('[Theme] Theme attribute changed to:', currentTheme);
+                        if (currentTheme && (currentTheme === 'light' || currentTheme === 'dark') && currentTheme !== storedTheme) {
+                            // Valid theme changed by user, update stored value
+                            console.log('[Theme] Updating stored theme to:', currentTheme);
+                            storedTheme = currentTheme;
+                            localStorage.setItem('msmq-app-theme', currentTheme);
+                        } else if (!currentTheme || (currentTheme !== 'light' && currentTheme !== 'dark')) {
+                            // Theme was removed or corrupted, restore it
+                            console.log('[Theme] Invalid theme detected, restoring:', storedTheme);
+                            applyTheme(storedTheme);
+                        }
+                    }
+                });
+            });
+            
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['data-bs-theme']
+            });
+            
+            // Also listen for Blazor circuit reconnection
+            window.blazorReconnectThemeHandler = function() {
+                console.log('[Theme] Blazor reconnected, ensuring theme persists');
+                setTimeout(() => applyTheme(storedTheme), 100);
+            };
+
+            // Listen for Blazor enhanced navigation events that might reset themes
+            document.addEventListener('enhancedload', function() {
+                console.log('[Theme] Enhanced navigation detected, reapplying theme');
+                setTimeout(() => {
+                    applyTheme(storedTheme);
+                    // Restart the observer in case it was lost
+                    observer.observe(document.documentElement, {
+                        attributes: true,
+                        attributeFilter: ['data-bs-theme']
+                    });
+                }, 50);
+            });
+
+            // Listen for popstate (back/forward navigation)
+            window.addEventListener('popstate', function() {
+                console.log('[Theme] Navigation detected via popstate, ensuring theme persistence');
+                setTimeout(() => applyTheme(storedTheme), 50);
+            });
+
+            // Override Blazor's internal navigation to preserve theme
+            const originalNavigateTo = window.Blazor?.navigateTo;
+            if (originalNavigateTo) {
+                window.Blazor.navigateTo = function(uri, forceLoad, replace) {
+                    console.log('[Theme] Blazor navigateTo intercepted, preserving theme');
+                    applyTheme(storedTheme);
+                    const result = originalNavigateTo.call(this, uri, forceLoad, replace);
+                    setTimeout(() => applyTheme(storedTheme), 100);
+                    return result;
+                };
+            }
+            
+        })();
+    </script>
+</head>
+
+<body>
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="@Assets["js/layout.js"]"></script>
+    <script src="@Assets["js/drawer.js"]"></script>
+    <script src="@Assets["js/homepage.js"]"></script>
+    
+    <!-- Debug drawer functionality -->
+    <script>
+        // Test drawer after Blazor loads
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                console.log('Testing drawer elements after page load');
+                const drawer = document.getElementById('sidebar-drawer');
+                const hamburger = document.querySelector('.hamburger-btn');
+                const overlay = document.querySelector('.drawer-overlay');
+                
+                console.log('Drawer elements check:', {
+                    drawer: drawer ? 'found' : 'not found',
+                    hamburger: hamburger ? 'found' : 'not found', 
+                    overlay: overlay ? 'found' : 'not found'
+                });
+                
+                if (hamburger) {
+                    console.log('Adding click listener to hamburger');
+                    hamburger.addEventListener('click', function(e) {
+                        console.log('Hamburger clicked!');
+                        if (drawer) {
+                            drawer.style.left = drawer.style.left === '0px' ? '-280px' : '0px';
+                            console.log('Manual toggle applied, left:', drawer.style.left);
+                        }
+                    });
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+
+</html>

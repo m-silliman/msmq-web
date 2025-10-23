@@ -1,0 +1,104 @@
+@namespace MsMqApp.Components.Shared
+@inherits MessageBodyViewerBase
+
+<div class="message-body-viewer">
+    <!-- Toolbar -->
+    <div class="body-viewer-toolbar">
+        <div class="toolbar-start">
+            <label for="@FormatSelectId" class="form-label small mb-0 me-2">Format:</label>
+            <select id="@FormatSelectId"
+                    class="form-select form-select-sm format-selector"
+                    @bind="SelectedFormat"
+                    disabled="@IsDisabled">
+                <option value="@MessageBodyFormat.Unknown">Auto</option>
+                <option value="@MessageBodyFormat.Text">Text</option>
+                <option value="@MessageBodyFormat.Xml">XML</option>
+                <option value="@MessageBodyFormat.Json">JSON</option>
+                <option value="@MessageBodyFormat.Binary">Binary (Hex)</option>
+            </select>
+        </div>
+
+        <div class="toolbar-end">
+            @if (!string.IsNullOrWhiteSpace(FormattedContent))
+            {
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        @onclick="CopyToClipboardAsync"
+                        disabled="@(IsDisabled || IsCopying)"
+                        title="Copy to clipboard">
+                    @if (IsCopying)
+                    {
+                        <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+                    }
+                    else if (ShowCopySuccess)
+                    {
+                        <i class="bi bi-check2" aria-hidden="true"></i>
+                        <span class="ms-1">Copied!</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-clipboard" aria-hidden="true"></i>
+                        <span class="ms-1">Copy</span>
+                    }
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="body-viewer-content @GetContentClass()">
+        @if (IsLoading)
+        {
+            <div class="body-viewer-loading">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <span class="ms-2">Loading content...</span>
+            </div>
+        }
+        else if (MessageBody == null || string.IsNullOrWhiteSpace(MessageBody.RawContent))
+        {
+            <div class="body-viewer-empty">
+                <i class="bi bi-file-earmark-text text-muted" aria-hidden="true"></i>
+                <p class="text-muted mb-0 mt-2">No message content available</p>
+            </div>
+        }
+        else if (IsTruncated)
+        {
+            <div class="body-viewer-warning">
+                <i class="bi bi-exclamation-triangle text-warning" aria-hidden="true"></i>
+                <p class="mb-2">Content exceeds maximum display size (@MaxDisplaySizeKB KB)</p>
+                <p class="text-muted small mb-0">Showing first @MaxDisplaySizeKB KB. Original size: @FormattedOriginalSize</p>
+            </div>
+            <pre class="body-viewer-text @GetSyntaxHighlightClass()"><code>@FormattedContent</code></pre>
+        }
+        else
+        {
+            <pre class="body-viewer-text @GetSyntaxHighlightClass()"><code>@FormattedContent</code></pre>
+        }
+    </div>
+
+    <!-- Footer Info -->
+    @if (ShowMetadata && MessageBody != null && !string.IsNullOrWhiteSpace(MessageBody.RawContent))
+    {
+        <div class="body-viewer-footer">
+            <small class="text-muted">
+                <span class="me-3">
+                    <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                    Format: <strong>@GetFormatDisplayText()</strong>
+                </span>
+                <span class="me-3">
+                    <i class="bi bi-file-binary" aria-hidden="true"></i>
+                    Size: <strong>@FormattedSize</strong>
+                </span>
+                @if (!string.IsNullOrWhiteSpace(MessageBody.Encoding))
+                {
+                    <span>
+                        <i class="bi bi-code" aria-hidden="true"></i>
+                        Encoding: <strong>@MessageBody.Encoding</strong>
+                    </span>
+                }
+            </small>
+        </div>
+    }
+</div>

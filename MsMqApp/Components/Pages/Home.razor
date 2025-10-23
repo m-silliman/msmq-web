@@ -1,0 +1,64 @@
+@page "/"
+@rendermode InteractiveServer
+@inherits HomeBase
+
+<PageTitle>MSMQ Manager - Home</PageTitle>
+
+<div class="home-page">
+    <!-- Three-Panel Layout -->
+    <div class="home-content">
+        <!-- Left Panel: Queue Tree View -->
+        <div class="left-panel" style="@GetLeftPanelStyle()">
+            <QueueTreeView Connection="@CurrentConnection"
+                           SelectedQueue="@SelectedQueue"
+                           CurrentViewType="@CurrentViewType"
+                           OnNodeSelected="@HandleNodeSelectedAsync"
+                           OnRefreshRequested="@RefreshQueuesAsync"
+                           ShowRefreshButton="true"
+                           ShowConnectionDetails="true" />
+        </div>
+
+        <!-- Resizable Splitter -->
+        <div class="panel-splitter"
+             @onmousedown="StartResizeAsync"
+             @onmousedown:preventDefault="true"
+             title="Drag to resize panels">
+            <div class="splitter-handle"></div>
+        </div>
+
+        <!-- Right Panel: Message List -->
+        <div class="right-panel" style="@GetRightPanelStyle()">
+            <MessageList Messages="@Messages"
+                         SelectedQueue="@SelectedQueue"
+                         ViewType="@CurrentViewType"
+                         SelectedMessage="@SelectedMessage"
+                         SelectedMessageChanged="@HandleMessageSelectedAsync"
+                         OnMessageSelected="@HandleMessageSelectedAsync"
+                         OnSelectionChanged="@HandleSelectionChangedAsync"
+                         OnRefresh="@RefreshMessagesAsync"
+                         AutoRefreshEnabled="@AutoRefreshEnabled"
+                         RefreshIntervalSeconds="@RefreshIntervalSeconds"
+                         IsLoading="@IsLoadingMessages"
+                         IsRefreshing="@IsRefreshing" />
+        </div>
+    </div>
+
+    <!-- Message Detail Drawer -->
+    <MessageDetail Message="@SelectedMessage"
+                   IsOpen="@IsDetailDrawerOpen"
+                   IsOpenChanged="@((bool value) => IsDetailDrawerOpen = value)"
+                   OnClose="@CloseDetailDrawerAsync"
+                   OnDelete="@HandleDeleteMessageAsync"
+                   OnMove="@HandleMoveMessageAsync"
+                   OnExport="@HandleExportMessageAsync"
+                   OnResend="@HandleResendMessageAsync" />
+
+    <!-- Confirmation Dialog for Destructive Operations -->
+    <ConfirmationDialog @bind-IsOpen="@IsConfirmDialogOpen"
+                        Title="@ConfirmDialogTitle"
+                        Message="@ConfirmDialogMessage"
+                        Severity="@ConfirmDialogSeverity"
+                        ConfirmButtonText="@ConfirmButtonText"
+                        OnConfirm="@HandleConfirmAsync"
+                        OnCancel="@HandleCancelAsync" />
+</div>

@@ -1,0 +1,49 @@
+@inherits MainLayoutBase
+
+<div class="app-container">
+    <!-- Mobile Overlay -->
+    <div class="drawer-overlay @(_drawerOpen ? "active" : "")" @onclick="CloseDrawerAsync"></div>
+    
+    <!-- Sidebar Drawer -->
+    <aside class="app-sidebar @(_drawerOpen ? "open" : "")" id="sidebar-drawer">
+        <!-- Sidebar Header -->
+        <SidebarHeader />
+
+        <!-- Sidebar Content -->
+        <div class="sidebar-content">
+            <NavMenu @rendermode="InteractiveServer" />
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+        <!-- Top Bar -->
+        <div class="app-topbar">
+            <div class="topbar-content">
+                <div class="topbar-left">
+                    <!-- Hamburger Menu Button -->
+                    <button class="hamburger-btn @(_drawerOpen ? "active" : "")" @onclick="ToggleDrawerAsync" aria-label="Toggle navigation menu">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </button>
+                    <h1 class="app-title">MSMQ Manager</h1>
+                </div>
+                <div class="topbar-right">
+                    <ThemeToggle @rendermode="InteractiveServer" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <article class="app-content">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

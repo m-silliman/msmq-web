@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet new sln -n MsMqManager)",
+      "Bash(dotnet sln MsMqManager.sln add MsMqApp/MsMqApp.csproj)",
+      "Bash(dotnet new classlib -n MsMqApp.Services -f net9.0)",
+      "Bash(dotnet new classlib -n MsMqApp.Models -f net9.0)",
+      "Bash(dotnet new xunit -n MsMqApp.Tests -f net9.0)",
+      "Bash(dotnet sln MsMqManager.sln add MsMqApp.Services/MsMqApp.Services.csproj)",
+      "Bash(dotnet sln MsMqManager.sln add MsMqApp.Models/MsMqApp.Models.csproj)",
+      "Bash(dotnet sln MsMqManager.sln add MsMqApp.Tests/MsMqApp.Tests.csproj)",
+      "Bash(dotnet add MsMqApp/MsMqApp.csproj reference MsMqApp.Services/MsMqApp.Services.csproj)",
+      "Bash(dotnet add MsMqApp/MsMqApp.csproj reference MsMqApp.Models/MsMqApp.Models.csproj)",
+      "Bash(dotnet add MsMqApp.Services/MsMqApp.Services.csproj reference MsMqApp.Models/MsMqApp.Models.csproj)",
+      "Bash(dotnet add MsMqApp.Tests/MsMqApp.Tests.csproj reference MsMqApp/MsMqApp.csproj)",
+      "Bash(dotnet add MsMqApp.Tests/MsMqApp.Tests.csproj reference MsMqApp.Services/MsMqApp.Services.csproj)",
+      "Bash(dotnet add MsMqApp.Tests/MsMqApp.Tests.csproj reference MsMqApp.Models/MsMqApp.Models.csproj)",
+      "Bash(test -f .gitignore)",
+      "Bash(test -f .editorconfig)",
+      "Bash(dotnet build MsMqManager.sln)",
+      "Bash(dotnet test MsMqManager.sln --no-build)",
+      "Bash(dotnet add MsMqApp.Services/MsMqApp.Services.csproj package System.Messaging.Compatibility)",
+      "Bash(dotnet add MsMqApp.Services/MsMqApp.Services.csproj package Experimental.System.Messaging)",
+      "Bash(dotnet add MsMqApp.Services/MsMqApp.Services.csproj package Microsoft.Extensions.Logging.Abstractions)",
+      "Bash(dotnet restore MsMqApp.Services/MsMqApp.Services.csproj)",
+      "Bash(dotnet build MsMqApp.Services/MsMqApp.Services.csproj)",
+      "Bash(dotnet build MsMqManager.sln --no-incremental)",
+      "Bash(dotnet run --project MsMqApp/MsMqApp.csproj --launch-profile http)",
+      "Bash(dotnet build MsMqApp.Models/MsMqApp.Models.csproj)",
+      "Bash(dotnet build \"C:\\Users\\mike\\Source\\msmqmgr\\MsMqManager.sln\" --no-incremental)",
+      "Bash(dotnet build \"C:\\Users\\mike\\Source\\msmqmgr\\MsMqApp\\MsMqApp.csproj\")",
+      "Bash(dotnet list MsMqApp.Services package)",
+      "Bash(dotnet build \"C:\\Users\\mike\\Source\\msmqmgr\\MsMqManager.sln\")",
+      "Bash(Select-String -Pattern \"error\")",
+      "Bash(dotnet add:*)",
+      "Bash(dotnet build:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \".\\build-standalone.ps1\")",
+      "Bash(dir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

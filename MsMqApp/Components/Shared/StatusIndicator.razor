@@ -1,0 +1,21 @@
+@namespace MsMqApp.Components.Shared
+@inherits StatusIndicatorBase
+
+<span class="status-indicator-wrapper" title="@Tooltip" aria-label="@GetAriaLabel()">
+    <span class="status-dot @GetSizeClass() @GetVariantClass() @GetShapeClass()">
+        @if (ShowIcon && !string.IsNullOrWhiteSpace(GetIconClass()))
+        {
+            <i class="@GetIconClass()" aria-hidden="true"></i>
+        }
+
+        @if (Pulse)
+        {
+            <span class="pulse-ring"></span>
+        }
+    </span>
+
+    @if (ShowLabel && !string.IsNullOrWhiteSpace(Label))
+    {
+        <span class="status-label @GetSizeClass()">@Label</span>
+    }
+</span>

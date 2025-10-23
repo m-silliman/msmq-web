@@ -1,0 +1,38 @@
+@namespace MsMqApp.Components.Shared
+@inherits RefreshControlBase
+
+<div class="refresh-control">
+    <div class="refresh-control-buttons">
+        <button class="btn btn-sm btn-outline-primary"
+                @onclick="OnRefreshClickedAsync"
+                disabled="@(IsRefreshing || IsPaused)"
+                title="Refresh now">
+            <i class="bi @GetRefreshIconClass()" aria-hidden="true"></i>
+            @if (ShowRefreshLabel)
+            {
+                <span class="ms-1">Refresh</span>
+            }
+        </button>
+
+        <button class="btn btn-sm @GetPauseButtonClass()"
+                @onclick="OnPauseToggledAsync"
+                disabled="@IsRefreshing"
+                title="@GetPauseTooltip()">
+            <i class="bi @GetPauseIconClass()" aria-hidden="true"></i>
+            @if (ShowPauseLabel)
+            {
+                <span class="ms-1">@GetPauseLabel()</span>
+            }
+        </button>
+    </div>
+
+    @if (ShowCountdown && AutoRefreshEnabled && !IsPaused)
+    {
+        <div class="refresh-control-countdown">
+            <small class="text-muted">
+                <i class="bi bi-clock" aria-hidden="true"></i>
+                Next refresh in @RemainingSeconds s
+            </small>
+        </div>
+    }
+</div>

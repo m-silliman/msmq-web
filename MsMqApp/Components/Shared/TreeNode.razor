@@ -1,0 +1,66 @@
+@namespace MsMqApp.Components.Shared
+@inherits TreeNodeBase
+
+<div class="tree-node" role="treeitem"
+     aria-expanded="@(NodeData.HasChildren ? NodeData.IsExpanded.ToString().ToLower() : null)"
+     aria-selected="@NodeData.IsSelected.ToString().ToLower()"
+     aria-level="@(NodeData.Level + 1)">
+
+    <div class="tree-node-content @GetSelectedClass()"
+         style="padding-left: @GetIndentationStyle()"
+         @onclick="OnNodeClickAsync"
+         @onclick:stopPropagation="true">
+
+        @if (NodeData.HasChildren)
+        {
+            <button class="tree-node-toggle"
+                    aria-label="@GetToggleAriaLabel()"
+                    @onclick="OnToggleClickAsync"
+                    @onclick:stopPropagation="true">
+                <i class="@GetExpandIconClass()" aria-hidden="true"></i>
+            </button>
+        }
+        else
+        {
+            <span class="tree-node-spacer"></span>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(NodeData.IconClass))
+        {
+            <i class="@NodeData.IconClass tree-node-icon" aria-hidden="true"></i>
+        }
+
+        <span class="tree-node-text">@NodeData.Text</span>
+
+        @if (NodeData.BadgeCount.HasValue)
+        {
+            <span class="tree-node-badge badge bg-secondary"
+                  title="@GetBadgeTooltip()"
+                  aria-label="@GetBadgeAriaLabel()">
+                @FormatBadgeCount(NodeData.BadgeCount.Value)
+            </span>
+        }
+
+        @if (NodeData.SecondaryBadgeCount.HasValue)
+        {
+            <span class="tree-node-badge badge bg-info"
+                  title="@GetSecondaryBadgeTooltip()"
+                  aria-label="@GetSecondaryBadgeAriaLabel()">
+                @FormatBadgeCount(NodeData.SecondaryBadgeCount.Value)
+            </span>
+        }
+    </div>
+
+    @if (NodeData.IsExpanded && NodeData.Children.Count > 0)
+    {
+        <div class="tree-node-children" role="group">
+            @foreach (var child in NodeData.Children)
+            {
+                <TreeNode @key="child.Id"
+                          NodeData="@child"
+                          OnNodeClick="@OnNodeClick"
+                          OnNodeToggle="@OnNodeToggle" />
+            }
+        </div>
+    }
+</div>

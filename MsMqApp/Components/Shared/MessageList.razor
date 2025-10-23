@@ -1,0 +1,134 @@
+@namespace MsMqApp.Components.Shared
+@inherits MessageListBase
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+
+<div class="message-list">
+    <div class="message-list-header">
+        @if (SelectedQueue != null)
+        {
+            <div class="selected-queue-breadcrumb">
+                <div class="breadcrumb-content">
+                    <i class="@GetViewTypeIcon() text-primary" aria-hidden="true"></i>
+                    <span class="queue-path">@GetQueueDisplayName()</span>
+                    <span class="mx-2 text-muted">›</span>
+                    <span class="view-type-label">@GetViewTypeText()</span>
+                    @if (ViewType == Models.Enums.QueueViewType.QueueMessages)
+                    {
+                        <span class="queue-count badge bg-secondary ms-2">@SelectedQueue.MessageCount</span>
+                    }
+                    else if (ViewType == Models.Enums.QueueViewType.JournalMessages)
+                    {
+                        <span class="queue-count badge bg-info ms-2">@SelectedQueue.JournalMessageCount</span>
+                    }
+                </div>
+                @if (SelectedQueue.QueueType != Models.Enums.QueueType.Private)
+                {
+                    <small class="queue-type text-muted">@SelectedQueue.QueueType</small>
+                }
+            </div>
+        }
+        
+        <div class="message-list-toolbar">
+            <div class="message-list-search">
+                <i class="bi bi-search search-icon" aria-hidden="true"></i>
+                <input type="text"
+                       class="form-control form-control-sm"
+                       placeholder="Search messages..."
+                       @bind="SearchQuery"
+                       @bind:event="oninput"
+                       @bind:after="OnSearchChangedAsync" />
+                @if (!string.IsNullOrWhiteSpace(SearchQuery))
+                {
+                    <button class="btn btn-sm btn-link clear-search"
+                            @onclick="ClearSearchAsync"
+                            title="Clear search">
+                        <i class="bi bi-x" aria-hidden="true"></i>
+                    </button>
+                }
+            </div>
+
+            <div class="message-list-info">
+                <small class="text-muted">
+                    @GetMessageCountText()
+                </small>
+            </div>
+
+            <RefreshControl OnRefresh="@HandleRefreshAsync"
+                            AutoRefreshEnabled="@AutoRefreshEnabled"
+                            RefreshIntervalSeconds="@RefreshIntervalSeconds"
+                            IsRefreshing="@IsRefreshing"
+                            @bind-IsPaused="@IsPaused"
+                            ShowCountdown="true"
+                            ShowRefreshLabel="false"
+                            ShowPauseLabel="false" />
+        </div>
+    </div>
+
+    <div class="message-list-content">
+        @if (IsLoading)
+        {
+            <div class="message-list-loading">
+                <LoadingSpinner Size="SpinnerSize.Medium" Message="Loading messages..." />
+            </div>
+        }
+        else if (FilteredMessages.Count == 0)
+        {
+            <div class="message-list-empty">
+                <i class="@GetViewTypeIcon() text-muted" aria-hidden="true"></i>
+                <p class="text-muted mb-0">
+                    @if (string.IsNullOrWhiteSpace(SearchQuery))
+                    {
+                        <text>@GetEmptyStateMessage()</text>
+                    }
+                    else
+                    {
+                        <text>No messages match "@SearchQuery"</text>
+                    }
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="message-list-grid">
+                <div class="message-grid-header">
+                    <div class="message-grid-cell message-cell-select">
+                        <input type="checkbox"
+                               class="form-check-input"
+                               @onchange="ToggleSelectAllAsync"
+                               checked="@AreAllSelected()" />
+                    </div>
+                    <div class="message-grid-cell message-cell-label" @onclick='() => ToggleSortAsync("Label")'>
+                        Label @GetSortIcon("Label")
+                    </div>
+                    <div class="message-grid-cell message-cell-priority" @onclick='() => ToggleSortAsync("Priority")'>
+                        Priority @GetSortIcon("Priority")
+                    </div>
+                    <div class="message-grid-cell message-cell-arrived" @onclick='() => ToggleSortAsync("ArrivedTime")'>
+                        Arrived @GetSortIcon("ArrivedTime")
+                    </div>
+                    <div class="message-grid-cell message-cell-size" @onclick='() => ToggleSortAsync("Size")'>
+                        Size @GetSortIcon("Size")
+                    </div>
+                </div>
+
+                <Virtualize Items="@FilteredMessages" Context="message" OverscanCount="10">
+                    <MessageRow Message="@message"
+                                IsSelected="@(SelectedMessage?.Id == message.Id)"
+                                IsChecked="@IsMessageSelected(message)"
+                                ShowId="false"
+                                OnRowClick="@SelectMessageAsync"
+                                OnCheckboxChanged="@ToggleMessageSelectionAsync" />
+                </Virtualize>
+            </div>
+        }
+    </div>
+
+    @if (SelectedMessages.Count > 0)
+    {
+        <div class="message-list-footer">
+            <small class="text-muted">
+                @SelectedMessages.Count selected
+            </small>
+        </div>
+    }
+</div>

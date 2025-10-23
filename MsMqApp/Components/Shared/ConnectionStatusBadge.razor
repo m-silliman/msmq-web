@@ -1,0 +1,16 @@
+@namespace MsMqApp.Components.Shared
+@inherits ConnectionStatusBadgeBase
+
+<div class="connection-status-badge" title="@GetTooltip()">
+    <StatusIndicator Variant="@GetStatusVariant()"
+                     Size="StatusSize.Small"
+                     ShowLabel="@ShowLabel"
+                     Label="@GetStatusLabel()"
+                     Pulse="@ShouldPulse()"
+                     Tooltip="@GetTooltip()" />
+
+    @if (ShowDetails && !string.IsNullOrWhiteSpace(Details))
+    {
+        <span class="status-details">@Details</span>
+    }
+</div>

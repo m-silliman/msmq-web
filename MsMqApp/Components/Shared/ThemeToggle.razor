@@ -1,0 +1,25 @@
+@namespace MsMqApp.Components.Shared
+@inherits ThemeToggleBase
+@implements IDisposable
+
+<button type="button"
+        class="btn btn-outline-secondary theme-toggle-btn @GetActiveClass()"
+        @onclick="HandleToggleClickAsync"
+        disabled="@(IsDisabled || IsLoading)"
+        title="@GetTooltipText()"
+        aria-label="@GetAriaLabel()">
+
+    @if (IsLoading)
+    {
+        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+    }
+    else
+    {
+        <i class="@GetIconClass() me-1"></i>
+    }
+
+    @if (ShowLabel)
+    {
+        <span>@GetLabelText()</span>
+    }
+</button>

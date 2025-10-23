@@ -1,0 +1,12 @@
+@namespace MsMqApp.Components.Shared
+@inherits LoadingSpinnerBase
+
+<div class="loading-spinner-container @GetSizeClass()">
+    <div class="spinner-border @GetColorClass()" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <div class="loading-message">@Message</div>
+    }
+</div>

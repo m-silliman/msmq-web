@@ -1,0 +1,102 @@
+@namespace MsMqApp.Components.Shared
+@inherits MessageDetailBase
+
+@if (IsOpen && Message != null)
+{
+    <div class="message-detail-overlay" @onclick="OnCloseAsync"></div>
+    <div class="message-detail-drawer @GetDrawerClass()">
+        <div class="message-detail-header">
+            <h5 class="message-detail-title">Message Details</h5>
+            <button class="btn btn-sm btn-link message-detail-close" @onclick="OnCloseAsync" title="Close">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <div class="message-detail-content">
+            <!-- Properties Section -->
+            <div class="message-detail-section">
+                <h6 class="section-title">Properties</h6>
+                <dl class="property-list">
+                    <dt>Message ID</dt>
+                    <dd><code>@Message.Id</code></dd>
+
+                    <dt>Label</dt>
+                    <dd>@Message.Label</dd>
+
+                    <dt>Priority</dt>
+                    <dd>
+                        <span class="badge @GetPriorityBadgeClass()">@Message.PriorityText</span>
+                    </dd>
+
+                    <dt>Arrived</dt>
+                    <dd>@Message.ArrivedTime.ToString("yyyy-MM-dd HH:mm:ss.fff")</dd>
+
+                    <dt>Sent</dt>
+                    <dd>@Message.SentTime.ToString("yyyy-MM-dd HH:mm:ss.fff")</dd>
+
+                    @if (Message.HasCorrelationId)
+                    {
+                        <dt>Correlation ID</dt>
+                        <dd><code>@Message.CorrelationId</code></dd>
+                    }
+
+                    <dt>Size</dt>
+                    <dd>@Message.FormattedSize</dd>
+
+                    <dt>Response Queue</dt>
+                    <dd>@(string.IsNullOrWhiteSpace(Message.ResponseQueue) ? "None" : Message.ResponseQueue)</dd>
+
+                    @if (Message.SenderId != null && Message.SenderId.Length > 0)
+                    {
+                        <dt>Sender ID</dt>
+                        <dd><code>@BitConverter.ToString(Message.SenderId).Replace("-", "")</code></dd>
+                    }
+
+                    <dt>Recoverable</dt>
+                    <dd>@(Message.Recoverable ? "Yes" : "No")</dd>
+
+                    <dt>Authenticated</dt>
+                    <dd>@(Message.Authenticated ? "Yes" : "No")</dd>
+
+                    <dt>Journaled</dt>
+                    <dd>@(Message.UseJournalQueue ? "Yes" : "No")</dd>
+
+                    @if (Message.IsExpired)
+                    {
+                        <dt>Status</dt>
+                        <dd><span class="badge bg-warning text-dark">Expired</span></dd>
+                    }
+                </dl>
+            </div>
+
+            <!-- Message Body Section -->
+            <div class="message-detail-section">
+                <h6 class="section-title">Message Body</h6>
+                <div class="message-body-container">
+                    <MessageBodyViewer MessageBody="@Message.Body"
+                                       ShowMetadata="true"
+                                       MaxDisplaySize="@(512 * 1024)" />
+                </div>
+            </div>
+
+            <!-- Operations Section -->
+            <div class="message-detail-section">
+                <h6 class="section-title">Operations</h6>
+                <div class="message-operations">
+                    <button class="btn btn-sm btn-outline-danger" @onclick="OnDeleteClickedAsync" disabled="@IsOperationInProgress">
+                        <i class="bi bi-trash" aria-hidden="true"></i> Delete
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="OnMoveClickedAsync" disabled="@IsOperationInProgress">
+                        <i class="bi bi-arrow-right" aria-hidden="true"></i> Move
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="OnExportClickedAsync" disabled="@IsOperationInProgress">
+                        <i class="bi bi-download" aria-hidden="true"></i> Export
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" @onclick="OnResendClickedAsync" disabled="@IsOperationInProgress">
+                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Resend
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

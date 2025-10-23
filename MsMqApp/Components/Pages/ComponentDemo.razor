@@ -1,0 +1,548 @@
+@page "/component-demo"
+@rendermode InteractiveServer
+@inherits ComponentDemoBase
+
+<PageTitle>Component Demo</PageTitle>
+
+<div class="container-fluid mt-4">
+    <h1>Component Demonstration</h1>
+    <p class="text-muted">Showcase of reusable components with dark/light mode support</p>
+
+    <hr class="my-4" />
+
+    <!-- Theme Toggle Demo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Theme Toggle Component</h3>
+        </div>
+        <div class="card-body">
+            <p>Toggle between dark and light modes. The theme preference is persisted in localStorage.</p>
+            <div class="d-flex gap-3 flex-wrap">
+                <ThemeToggle />
+                <ThemeToggle ShowLabel="false" />
+                <ThemeToggle IsDisabled="true" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Indicator Demo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Status Indicator Component</h3>
+        </div>
+        <div class="card-body">
+            <h5 class="mb-3">Bootstrap Color Variants</h5>
+            <div class="d-flex gap-3 flex-wrap align-items-center mb-4">
+                <StatusIndicator Variant="StatusVariant.Success" Label="Success" Tooltip="Operation completed successfully" />
+                <StatusIndicator Variant="StatusVariant.Primary" Label="Primary" Tooltip="Primary state" />
+                <StatusIndicator Variant="StatusVariant.Danger" Label="Danger" Tooltip="Error state" />
+                <StatusIndicator Variant="StatusVariant.Warning" Label="Warning" Tooltip="Warning state" />
+                <StatusIndicator Variant="StatusVariant.Info" Label="Info" Tooltip="Information state" />
+                <StatusIndicator Variant="StatusVariant.Secondary" Label="Secondary" Tooltip="Secondary state" />
+            </div>
+
+            <h5 class="mb-3">Sizes</h5>
+            <div class="d-flex gap-3 flex-wrap align-items-center mb-4">
+                <StatusIndicator Size="StatusSize.Small" Variant="StatusVariant.Success" Label="Small" />
+                <StatusIndicator Size="StatusSize.Medium" Variant="StatusVariant.Primary" Label="Medium" />
+                <StatusIndicator Size="StatusSize.Large" Variant="StatusVariant.Danger" Label="Large" />
+            </div>
+
+            <h5 class="mb-3">Shapes</h5>
+            <div class="d-flex gap-3 flex-wrap align-items-center mb-4">
+                <StatusIndicator Shape="StatusShape.Circle" Variant="StatusVariant.Success" Label="Circle" />
+                <StatusIndicator Shape="StatusShape.Square" Variant="StatusVariant.Primary" Label="Square" />
+                <StatusIndicator Shape="StatusShape.Rounded" Variant="StatusVariant.Warning" Label="Rounded" />
+            </div>
+
+            <h5 class="mb-3">With Icons</h5>
+            <div class="d-flex gap-3 flex-wrap align-items-center mb-4">
+                <StatusIndicator ShowIcon="true" Variant="StatusVariant.Success" Label="Success" />
+                <StatusIndicator ShowIcon="true" Variant="StatusVariant.Danger" Label="Error" />
+                <StatusIndicator ShowIcon="true" Variant="StatusVariant.Warning" Label="Warning" />
+                <StatusIndicator ShowIcon="true" Variant="StatusVariant.Info" Label="Info" />
+            </div>
+
+            <h5 class="mb-3">Pulse Animation</h5>
+            <div class="d-flex gap-3 flex-wrap align-items-center mb-4">
+                <StatusIndicator Pulse="true" Variant="StatusVariant.Success" Label="Active" />
+                <StatusIndicator Pulse="true" Variant="StatusVariant.Danger" Label="Alert" />
+                <StatusIndicator Pulse="true" Variant="StatusVariant.Info" Label="Processing" />
+            </div>
+
+            <h5 class="mb-3">Without Labels</h5>
+            <div class="d-flex gap-3 flex-wrap align-items-center mb-4">
+                <StatusIndicator ShowLabel="false" Variant="StatusVariant.Success" Tooltip="Success" />
+                <StatusIndicator ShowLabel="false" Variant="StatusVariant.Primary" Tooltip="Primary" />
+                <StatusIndicator ShowLabel="false" Variant="StatusVariant.Danger" Tooltip="Danger" />
+                <StatusIndicator ShowLabel="false" Variant="StatusVariant.Warning" Tooltip="Warning" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner Demo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Loading Spinner Component</h3>
+        </div>
+        <div class="card-body">
+            <h5 class="mb-3">Sizes</h5>
+            <div class="d-flex gap-4 flex-wrap mb-4">
+                <LoadingSpinner Size="SpinnerSize.Small" Message="Loading..." />
+                <LoadingSpinner Size="SpinnerSize.Medium" Message="Loading..." />
+                <LoadingSpinner Size="SpinnerSize.Large" Message="Loading..." />
+            </div>
+
+            <h5 class="mb-3">Colors</h5>
+            <div class="d-flex gap-4 flex-wrap mb-4">
+                <LoadingSpinner Color="SpinnerColor.Primary" Message="Primary" />
+                <LoadingSpinner Color="SpinnerColor.Success" Message="Success" />
+                <LoadingSpinner Color="SpinnerColor.Danger" Message="Danger" />
+                <LoadingSpinner Color="SpinnerColor.Warning" Message="Warning" />
+            </div>
+
+            <h5 class="mb-3">Without Message</h5>
+            <div class="d-flex gap-4 flex-wrap">
+                <LoadingSpinner />
+            </div>
+        </div>
+    </div>
+
+    <!-- ConfirmationDialog Demo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">ConfirmationDialog Component</h3>
+        </div>
+        <div class="card-body">
+            <p>Reusable confirmation dialog for destructive operations with different severity levels, custom content, and async support.</p>
+
+            <h5 class="mb-3">Severity Levels</h5>
+            <div class="d-flex gap-3 flex-wrap mb-4">
+                <button class="btn btn-primary" @onclick="() => OpenDialogAsync(DialogSeverity.Info)">
+                    <i class="bi bi-info-circle me-1"></i> Info Dialog
+                </button>
+                <button class="btn btn-warning" @onclick="() => OpenDialogAsync(DialogSeverity.Warning)">
+                    <i class="bi bi-exclamation-triangle me-1"></i> Warning Dialog
+                </button>
+                <button class="btn btn-danger" @onclick="() => OpenDialogAsync(DialogSeverity.Danger)">
+                    <i class="bi bi-exclamation-octagon me-1"></i> Danger Dialog
+                </button>
+                <button class="btn btn-success" @onclick="() => OpenDialogAsync(DialogSeverity.Success)">
+                    <i class="bi bi-check-circle me-1"></i> Success Dialog
+                </button>
+            </div>
+
+            <h5 class="mb-3">Special Features</h5>
+            <div class="d-flex gap-3 flex-wrap mb-4">
+                <button class="btn btn-outline-primary" @onclick="OpenDialogWithDetailsAsync">
+                    <i class="bi bi-card-text me-1"></i> With Detail Message
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="OpenDialogWithCustomContentAsync">
+                    <i class="bi bi-pencil-square me-1"></i> With Custom Content
+                </button>
+                <button class="btn btn-outline-info" @onclick="OpenDialogWithBackdropCloseAsync">
+                    <i class="bi bi-mouse me-1"></i> Backdrop Closeable
+                </button>
+                <button class="btn btn-outline-warning" @onclick="OpenDialogWithAsyncOperationAsync">
+                    <i class="bi bi-hourglass-split me-1"></i> Async Operation
+                </button>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(DialogResultMessage))
+            {
+                <div class="alert @GetDialogResultAlertClass()" role="alert">
+                    <i class="bi @GetDialogResultIcon()"></i>
+                    <strong>Result:</strong> @DialogResultMessage
+                </div>
+            }
+
+            <h5 class="mb-3 mt-4">Features</h5>
+            <ul class="small">
+                <li><strong>Severity Levels:</strong> Info, Warning, Danger, Success with appropriate colors and icons</li>
+                <li><strong>Custom Content:</strong> Support for custom child content in the dialog body</li>
+                <li><strong>Detail Message:</strong> Expandable details section for additional information</li>
+                <li><strong>Backdrop Options:</strong> Configurable backdrop click behavior</li>
+                <li><strong>Async Support:</strong> Loading states during async operations</li>
+                <li><strong>Accessibility:</strong> ARIA attributes, keyboard navigation, focus management</li>
+                <li><strong>Responsive:</strong> Mobile-friendly layout with full-width buttons on small screens</li>
+                <li><strong>Theme Support:</strong> Fully integrated with dark/light mode</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- TreeNode Demo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">TreeNode Component</h3>
+        </div>
+        <div class="card-body">
+            <p>Hierarchical tree view with expand/collapse functionality, selection state, and message count badges.</p>
+
+            <h5 class="mb-3">Queue Tree Example</h5>
+            <div class="border rounded p-3" style="max-width: 400px; background-color: var(--app-bg-secondary);">
+                @if (SampleTreeData != null)
+                {
+                    <TreeNode @key="SampleTreeData.Id"
+                              NodeData="@SampleTreeData"
+                              OnNodeClick="@HandleNodeClick"
+                              OnNodeToggle="@HandleNodeToggle" />
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(SelectedNodeInfo))
+            {
+                <div class="alert alert-info mt-3" role="status">
+                    <strong>Selected:</strong> @SelectedNodeInfo
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- QueueTreeView Demo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">QueueTreeView Component</h3>
+        </div>
+        <div class="card-body">
+            <p>Hierarchical queue tree view with connection status, organized by queue type (Private, Public, System, Journal).</p>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-3">Local Connection</h5>
+                    <div style="height: 500px;">
+                        @if (SampleConnection != null)
+                        {
+                            <QueueTreeView Connection="@SampleConnection"
+                                           OnQueueSelected="@HandleQueueSelected"
+                                           OnRefreshRequested="@HandleRefreshRequested"
+                                           ShowRefreshButton="true"
+                                           ShowConnectionDetails="true"
+                                           ExpandAll="false" />
+                        }
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h5 class="mb-3">Selected Queue Details</h5>
+                    @if (SelectedQueueFromTree != null)
+                    {
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">@SelectedQueueFromTree.Name</h6>
+                                <dl class="row mb-0 small">
+                                    <dt class="col-sm-4">Type:</dt>
+                                    <dd class="col-sm-8">@SelectedQueueFromTree.QueueType</dd>
+
+                                    <dt class="col-sm-4">Messages:</dt>
+                                    <dd class="col-sm-8">@SelectedQueueFromTree.MessageCount.ToString("N0")</dd>
+
+                                    <dt class="col-sm-4">Path:</dt>
+                                    <dd class="col-sm-8"><code class="small">@SelectedQueueFromTree.Path</code></dd>
+
+                                    <dt class="col-sm-4">Transactional:</dt>
+                                    <dd class="col-sm-8">@(SelectedQueueFromTree.IsTransactional ? "Yes" : "No")</dd>
+
+                                    <dt class="col-sm-4">Can Read:</dt>
+                                    <dd class="col-sm-8">@(SelectedQueueFromTree.CanRead ? "Yes" : "No")</dd>
+
+                                    <dt class="col-sm-4">Can Write:</dt>
+                                    <dd class="col-sm-8">@(SelectedQueueFromTree.CanWrite ? "Yes" : "No")</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info" role="status">
+                            <i class="bi bi-info-circle"></i>
+                            Select a queue from the tree to view details
+                        </div>
+                    }
+
+                    <h5 class="mt-4 mb-3">Connection Status Badge</h5>
+                    <div class="d-flex flex-column gap-2">
+                        <ConnectionStatusBadge Status="ConnectionStatus.Connected" ShowDetails="true" Details="5 queues, 174 messages" />
+                        <ConnectionStatusBadge Status="ConnectionStatus.Connecting" ShowDetails="false" />
+                        <ConnectionStatusBadge Status="ConnectionStatus.Failed" ShowDetails="true" Details="Access denied" />
+                        <ConnectionStatusBadge Status="ConnectionStatus.Timeout" ShowDetails="true" Details="Request timed out" />
+                        <ConnectionStatusBadge Status="ConnectionStatus.NotConnected" ShowDetails="false" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MessageList Demo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">MessageList Component</h3>
+        </div>
+        <div class="card-body">
+            <p>Virtualized message list with sorting, filtering, selection, and auto-refresh controls.</p>
+
+            <div class="row">
+                <div class="col-12">
+                    <div style="height: 600px;">
+                        <MessageList Messages="@SampleMessages"
+                                     SelectedQueue="@SampleSelectedQueue"
+                                     OnMessageSelected="@HandleMessageListSelection"
+                                     OnSelectionChanged="@HandleBulkSelection"
+                                     OnRefresh="@HandleMessageRefreshAsync"
+                                     AutoRefreshEnabled="true"
+                                     RefreshIntervalSeconds="10"
+                                     @bind-IsRefreshing="@IsRefreshingMessages"
+                                     IsLoading="@IsLoadingMessages"
+                                     @bind-SelectedMessage="@SelectedMessageFromList" />
+                    </div>
+                </div>
+            </div>
+
+            @if (SelectedMessageFromList != null)
+            {
+                <div class="mt-3">
+                    <h5>Selected Message Details</h5>
+                    <div class="card">
+                        <div class="card-body">
+                            <dl class="row mb-0 small">
+                                <dt class="col-sm-2">ID:</dt>
+                                <dd class="col-sm-10"><code class="small">@SelectedMessageFromList.Id</code></dd>
+
+                                <dt class="col-sm-2">Label:</dt>
+                                <dd class="col-sm-10">@SelectedMessageFromList.Label</dd>
+
+                                <dt class="col-sm-2">Priority:</dt>
+                                <dd class="col-sm-10">@SelectedMessageFromList.PriorityText</dd>
+
+                                <dt class="col-sm-2">Arrived:</dt>
+                                <dd class="col-sm-10">@SelectedMessageFromList.ArrivedTime.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                                <dt class="col-sm-2">Size:</dt>
+                                <dd class="col-sm-10">@SelectedMessageFromList.FormattedSize</dd>
+
+                                <dt class="col-sm-2">Recoverable:</dt>
+                                <dd class="col-sm-10">@(SelectedMessageFromList.Recoverable ? "Yes" : "No")</dd>
+
+                                @if (SelectedMessageFromList.HasCorrelationId)
+                                {
+                                    <dt class="col-sm-2">Correlation ID:</dt>
+                                    <dd class="col-sm-10"><code class="small">@SelectedMessageFromList.CorrelationId</code></dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (BulkSelectedMessages.Count > 0)
+            {
+                <div class="alert alert-info mt-3" role="status">
+                    <i class="bi bi-check2-square"></i>
+                    <strong>@BulkSelectedMessages.Count message(s) selected</strong> - Ready for bulk operations
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- MessageRow Demo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">MessageRow Component</h3>
+        </div>
+        <div class="card-body">
+            <p>Individual message row component with formatting, selection states, and priority indicators.</p>
+
+            <h5 class="mb-3">Different Priority Levels</h5>
+            <div class="message-row-demo-container">
+                @foreach (var message in GetSampleMessagesByPriority())
+                {
+                    <MessageRow Message="@message"
+                                IsSelected="@(DemoSelectedMessageId == message.Id)"
+                                IsChecked="@IsDemoMessageChecked(message.Id)"
+                                ShowId="true"
+                                OnRowClick="@HandleDemoRowClick"
+                                OnCheckboxChanged="@HandleDemoCheckboxChanged" />
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(DemoMessageInfo))
+            {
+                <div class="alert alert-info mt-3 mb-0" role="status">
+                    @DemoMessageInfo
+                </div>
+            }
+
+            <h5 class="mt-4 mb-3">Row States</h5>
+            <div class="message-row-demo-container">
+                @if (SampleMessages.Count >= 3)
+                {
+                    <MessageRow Message="@SampleMessages[0]"
+                                IsSelected="true"
+                                IsChecked="false"
+                                ShowId="false"
+                                OnRowClick="@(() => Task.CompletedTask)"
+                                OnCheckboxChanged="@(() => Task.CompletedTask)" />
+                    <MessageRow Message="@SampleMessages[1]"
+                                IsSelected="false"
+                                IsChecked="true"
+                                ShowId="false"
+                                OnRowClick="@(() => Task.CompletedTask)"
+                                OnCheckboxChanged="@(() => Task.CompletedTask)" />
+                    <MessageRow Message="@SampleMessages[2]"
+                                IsSelected="false"
+                                IsChecked="false"
+                                ShowId="false"
+                                OnRowClick="@(() => Task.CompletedTask)"
+                                OnCheckboxChanged="@(() => Task.CompletedTask)" />
+                }
+            </div>
+            <small class="text-muted">Top: Selected, Middle: Checked, Bottom: Normal</small>
+        </div>
+    </div>
+
+    <!-- MessageBodyViewer Demo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">MessageBodyViewer Component</h3>
+        </div>
+        <div class="card-body">
+            <p>Advanced message body viewer with format selection, syntax highlighting, copy-to-clipboard functionality, and truncation support for large messages.</p>
+
+            <h5 class="mb-3">XML Format</h5>
+            <div style="height: 300px;">
+                <MessageBodyViewer MessageBody="@GetDetailDemoMessages()[0].Body"
+                                   ShowMetadata="true"
+                                   MaxDisplaySize="@(1024 * 1024)" />
+            </div>
+
+            <h5 class="mb-3 mt-4">JSON Format</h5>
+            <div style="height: 300px;">
+                <MessageBodyViewer MessageBody="@GetDetailDemoMessages()[1].Body"
+                                   ShowMetadata="true"
+                                   MaxDisplaySize="@(1024 * 1024)" />
+            </div>
+
+            <h5 class="mb-3 mt-4">Plain Text Format</h5>
+            <div style="height: 250px;">
+                <MessageBodyViewer MessageBody="@GetDetailDemoMessages()[2].Body"
+                                   ShowMetadata="true"
+                                   MaxDisplaySize="@(1024 * 1024)" />
+            </div>
+
+            <h5 class="mb-3 mt-4">Binary Format (Hex Display)</h5>
+            <div style="height: 250px;">
+                <MessageBodyViewer MessageBody="@GetDetailDemoMessages()[3].Body"
+                                   ShowMetadata="true"
+                                   MaxDisplaySize="@(1024 * 1024)" />
+            </div>
+
+            <h5 class="mb-3 mt-4">Empty/Null Body</h5>
+            <div style="height: 200px;">
+                <MessageBodyViewer MessageBody="@null"
+                                   ShowMetadata="true" />
+            </div>
+
+            <h5 class="mb-3 mt-4">Features</h5>
+            <ul class="small">
+                <li><strong>Format Selection:</strong> Auto-detect or manually select format (Auto, Text, XML, JSON, Binary)</li>
+                <li><strong>Syntax Highlighting:</strong> Basic syntax highlighting for XML and JSON formats</li>
+                <li><strong>Copy to Clipboard:</strong> One-click copy of formatted content with visual feedback</li>
+                <li><strong>Large Content Handling:</strong> Automatic truncation with warning for content exceeding size limits</li>
+                <li><strong>Metadata Footer:</strong> Displays format, size, and encoding information</li>
+                <li><strong>Dark/Light Mode:</strong> Fully integrated with theme system</li>
+                <li><strong>Responsive:</strong> Mobile-friendly toolbar layout</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- MessageDetail Demo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">MessageDetail Drawer Component</h3>
+        </div>
+        <div class="card-body">
+            <p>Sliding drawer panel from the right displaying full message details with formatted body (using MessageBodyViewer) and operation buttons.</p>
+
+            <h5 class="mb-3">Demo Messages</h5>
+            <div class="list-group mb-3">
+                @foreach (var message in GetDetailDemoMessages())
+                {
+                    <button type="button"
+                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                            @onclick="() => OpenMessageDetailAsync(message)">
+                        <div>
+                            <strong>@message.Label</strong>
+                            <br />
+                            <small class="text-muted">@message.Body.Format.ToString() - @message.FormattedSize</small>
+                        </div>
+                        <span class="badge @GetDetailDemoPriorityBadge(message)">@message.PriorityText</span>
+                    </button>
+                }
+            </div>
+
+            @if (DetailDrawerMessage != null)
+            {
+                <div class="alert alert-success" role="status">
+                    <i class="bi bi-info-circle"></i>
+                    Currently viewing: <strong>@DetailDrawerMessage.Label</strong>
+                    @if (!string.IsNullOrWhiteSpace(DetailDrawerOperationLog))
+                    {
+                        <br />
+                        <small>Last operation: @DetailDrawerOperationLog</small>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Theme Info Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Current Theme Information</h3>
+        </div>
+        <div class="card-body">
+            <p><strong>Current Theme:</strong> @GetCurrentThemeDisplay()</p>
+            <p><strong>Is Dark Mode:</strong> @GetIsDarkModeDisplay()</p>
+            <p class="mb-0 text-muted small">Theme preference is automatically saved to localStorage and will persist across sessions.</p>
+        </div>
+    </div>
+</div>
+
+<!-- MessageDetail Drawer -->
+<MessageDetail Message="@DetailDrawerMessage"
+               @bind-IsOpen="@IsDetailDrawerOpen"
+               OnClose="@HandleDetailDrawerCloseAsync"
+               OnDelete="@HandleDetailDeleteAsync"
+               OnMove="@HandleDetailMoveAsync"
+               OnExport="@HandleDetailExportAsync"
+               OnResend="@HandleDetailResendAsync" />
+
+<!-- Confirmation Dialogs -->
+<ConfirmationDialog @bind-IsOpen="@IsDialogOpen"
+                    Title="@DialogTitle"
+                    Message="@DialogMessage"
+                    DetailMessage="@DialogDetailMessage"
+                    Severity="@CurrentDialogSeverity"
+                    ConfirmButtonText="@DialogConfirmText"
+                    CancelButtonText="@DialogCancelText"
+                    ShowCloseButton="@DialogShowCloseButton"
+                    CloseOnBackdropClick="@DialogCloseOnBackdrop"
+                    IsProcessing="@IsDialogProcessing"
+                    OnConfirm="@HandleDialogConfirmAsync"
+                    OnCancel="@HandleDialogCancelAsync">
+    @if (!string.IsNullOrWhiteSpace(DialogCustomContent))
+    {
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            @DialogCustomContent
+        </div>
+    }
+</ConfirmationDialog>
+
+<style>
+    .message-row-demo-container {
+        border: 1px solid var(--app-border-color);
+        border-radius: 0.375rem;
+        overflow: hidden;
+        background-color: var(--app-bg-primary);
+    }
+</style>

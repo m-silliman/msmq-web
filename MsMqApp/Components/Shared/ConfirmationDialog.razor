@@ -1,0 +1,81 @@
+@namespace MsMqApp.Components.Shared
+@inherits ConfirmationDialogBase
+
+@if (IsOpen)
+{
+    <!-- Backdrop -->
+    <div class="confirmation-dialog-backdrop @GetBackdropClass()"
+         @onclick="OnBackdropClickAsync"></div>
+
+    <!-- Dialog -->
+    <div class="confirmation-dialog @GetDialogClass()"
+         role="dialog"
+         aria-labelledby="@DialogTitleId"
+         aria-describedby="@DialogMessageId"
+         aria-modal="true">
+
+        <!-- Header -->
+        <div class="confirmation-dialog-header @GetHeaderClass()">
+            <div class="dialog-header-icon">
+                <i class="@GetIconClass()" aria-hidden="true"></i>
+            </div>
+            <h5 class="dialog-title" id="@DialogTitleId">@Title</h5>
+            @if (ShowCloseButton)
+            {
+                <button type="button"
+                        class="btn-close"
+                        @onclick="OnCancelAsync"
+                        aria-label="Close"
+                        disabled="@IsProcessing">
+                </button>
+            }
+        </div>
+
+        <!-- Body -->
+        <div class="confirmation-dialog-body" id="@DialogMessageId">
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <p class="dialog-message">@Message</p>
+            }
+            @if (ChildContent != null)
+            {
+                <div class="dialog-custom-content">
+                    @ChildContent
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(DetailMessage))
+            {
+                <details class="dialog-details">
+                    <summary>Show details</summary>
+                    <p class="dialog-detail-message">@DetailMessage</p>
+                </details>
+            }
+        </div>
+
+        <!-- Footer -->
+        <div class="confirmation-dialog-footer">
+            <button type="button"
+                    class="btn @GetCancelButtonClass()"
+                    @onclick="OnCancelAsync"
+                    disabled="@IsProcessing">
+                @if (IsProcessing && !ConfirmClicked)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                @CancelButtonText
+            </button>
+            <button type="button"
+                    class="btn @GetConfirmButtonClass()"
+                    @onclick="OnConfirmAsync"
+                    disabled="@IsProcessing"
+                    autofocus="@AutoFocusConfirm">
+                @if (IsProcessing && ConfirmClicked)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                <i class="@GetConfirmIconClass() me-1" aria-hidden="true"></i>
+                @ConfirmButtonText
+            </button>
+        </div>
+    </div>
+}
