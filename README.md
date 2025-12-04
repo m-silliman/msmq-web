@@ -134,28 +134,21 @@ dotnet publish -c Release -r win-x64 --self-contained
 **Current Phase:** Early scaffolding
 
 ### Completed
-- ✅ Solution structure with 4 projects
-- ✅ Base Blazor Server template
-- ✅ Dependency injection configuration
 - ✅ Service layer interfaces
-- ✅ Data models and DTOs
-- ✅ Configuration system
-- ✅ .editorconfig for code formatting
-- ✅ .gitignore for version control
+- ✅ MSMQ integration using System.Messaging
+- ✅ Queue discovery and monitoring
+- ✅ Message viewing and operations
+- ✅ UI components (tree view, data grid, detail drawer)
+- ✅ Search and filtering functionality
+- ✅ Windows Service hosting configuration
 
 ### To Do
-- ⬜ MSMQ integration using System.Messaging
-- ⬜ Queue discovery and monitoring
-- ⬜ Message viewing and operations
-- ⬜ UI components (tree view, data grid, detail drawer)
-- ⬜ Search and filtering functionality
 - ⬜ Remote computer connection management
-- ⬜ Windows Service hosting configuration
 - ⬜ Bulk operations (delete, move, export, purge)
 
 ## License
 
-[Specify your license here]
+TBD
 
 ## Contributing
 
