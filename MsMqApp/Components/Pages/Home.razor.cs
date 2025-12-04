@@ -322,6 +322,26 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     }
 
     /// <summary>
+    /// Handles when messages are deleted from the MessageList component.
+    /// </summary>
+    protected async Task HandleMessagesDeletedAsync(List<string> deletedMessageIds)
+    {
+        // Remove deleted messages from our local Messages list
+        Messages.RemoveAll(m => deletedMessageIds.Contains(m.Id));
+        
+        // Clear selected messages since they've been deleted
+        SelectedMessages.Clear();
+        
+        // Close detail drawer if the selected message was deleted
+        if (SelectedMessage != null && deletedMessageIds.Contains(SelectedMessage.Id))
+        {
+            await CloseDetailDrawerAsync();
+        }
+        
+        StateHasChanged();
+    }
+
+    /// <summary>
     /// Refreshes the message list for the currently selected queue.
     /// </summary>
     protected async Task RefreshMessagesAsync()

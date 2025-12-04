@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using MsMqApp.Models.Domain;
 using MsMqApp.Models.Enums;
+using MsMqApp.Services.Interfaces;
 
 namespace MsMqApp.Components.Shared;
 
@@ -36,6 +37,12 @@ public class MessageListBase : ComponentBase
     /// </summary>
     [Parameter]
     public EventCallback OnRefresh { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback invoked when messages are deleted.
+    /// </summary>
+    [Parameter]
+    public EventCallback<List<string>> OnMessagesDeleted { get; set; }
 
     /// <summary>
     /// Gets or sets whether auto-refresh is enabled.
@@ -75,6 +82,12 @@ public class MessageListBase : ComponentBase
     /// </summary>
     [Parameter]
     public QueueInfo? SelectedQueue { get; set; }
+
+    /// <summary>
+    /// Gets or sets the message operations service for performing bulk operations.
+    /// </summary>
+    [Parameter]
+    public IMessageOperationsService? MessageOperationsService { get; set; }
 
     /// <summary>
     /// Gets or sets the view type indicating whether showing queue messages or journal messages.
@@ -124,6 +137,16 @@ public class MessageListBase : ComponentBase
     /// Gets the filtered and sorted list of messages.
     /// </summary>
     protected List<QueueMessage> FilteredMessages { get; private set; } = new();
+
+    /// <summary>
+    /// Gets or sets whether the delete confirmation dialog is visible.
+    /// </summary>
+    protected bool ShowDeleteConfirmation { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether a delete operation is in progress.
+    /// </summary>
+    protected bool IsDeleting { get; set; }
 
     /// <inheritdoc/>
     protected override void OnParametersSet()
@@ -382,6 +405,92 @@ public class MessageListBase : ComponentBase
         {
             await OnRefresh.InvokeAsync();
         }
+    }
+
+    /// <summary>
+    /// Shows the delete confirmation dialog for selected messages.
+    /// </summary>
+    protected void ShowDeleteSelectedDialog()
+    {
+        if (SelectedMessages.Count > 0)
+        {
+            ShowDeleteConfirmation = true;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles the delete confirmation result.
+    /// </summary>
+    /// <param name="confirmed">Whether the user confirmed the deletion.</param>
+    protected async Task HandleDeleteConfirmationAsync(bool confirmed)
+    {
+        ShowDeleteConfirmation = false;
+        
+        if (confirmed && SelectedMessages.Count > 0)
+        {
+            await DeleteSelectedMessagesAsync();
+        }
+        
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Deletes the selected messages.
+    /// </summary>
+    private async Task DeleteSelectedMessagesAsync()
+    {
+        if (MessageOperationsService == null || SelectedQueue == null || SelectedMessages.Count == 0)
+        {
+            return;
+        }
+
+        IsDeleting = true;
+        StateHasChanged();
+
+        try
+        {
+            var messageIds = SelectedMessages.Select(m => m.Id).ToList();
+            var queuePath = ViewType == QueueViewType.JournalMessages 
+                ? SelectedQueue.JournalPath 
+                : (!string.IsNullOrEmpty(SelectedQueue.FormatName) ? SelectedQueue.FormatName : SelectedQueue.Path);
+
+            var result = await MessageOperationsService.DeleteMessagesAsync(queuePath, messageIds);
+
+            if (result.Success)
+            {
+                // Clear selected messages
+                SelectedMessages.Clear();
+
+                // Notify parent component about deleted messages
+                if (OnMessagesDeleted.HasDelegate)
+                {
+                    await OnMessagesDeleted.InvokeAsync(messageIds);
+                }
+
+                // Trigger refresh
+                if (OnRefresh.HasDelegate)
+                {
+                    await OnRefresh.InvokeAsync();
+                }
+            }
+            // TODO: Handle errors with user notification
+        }
+        finally
+        {
+            IsDeleting = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Gets the delete button text based on selected count.
+    /// </summary>
+    protected string GetDeleteButtonText()
+    {
+        return SelectedMessages.Count == 1 
+            ? "Delete 1 Message" 
+            : $"Delete {SelectedMessages.Count} Messages";
     }
 
     /// <summary>

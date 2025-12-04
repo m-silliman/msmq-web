@@ -126,9 +126,46 @@
     @if (SelectedMessages.Count > 0)
     {
         <div class="message-list-footer">
-            <small class="text-muted">
-                @SelectedMessages.Count selected
-            </small>
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">
+                    @SelectedMessages.Count selected
+                </small>
+                
+                <!-- Debug info -->
+                <small class="text-info">
+                    Debug: Selected=@SelectedMessages.Count, IsPaused=@IsPaused, Service=@(MessageOperationsService?.GetType().Name ?? "NULL"), ViewType=@ViewType
+                </small>
+                
+               
+                    <button class="btn btn-danger btn-sm"
+                            @onclick="ShowDeleteSelectedDialog"
+                            disabled="@IsDeleting"
+                            title="Delete selected messages">
+                        @if (IsDeleting)
+                        {
+                            <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>
+                            <text>Deleting...</text>
+                        }
+                        else
+                        {
+                            <i class="bi bi-trash3 me-1" aria-hidden="true"></i>
+                            <text>@GetDeleteButtonText()</text>
+                        }
+                    </button>
+               
+            </div>
         </div>
     }
 </div>
+
+@if (ShowDeleteConfirmation)
+{
+    <ConfirmationDialog Title="Delete Messages"
+                        Message="@($"Are you sure you want to delete {SelectedMessages.Count} message{(SelectedMessages.Count == 1 ? "" : "s")}? This action cannot be undone.")"
+                        ConfirmButtonText="Delete"
+                        CancelButtonText="Cancel"
+                        Severity="DialogSeverity.Danger"
+                        @bind-IsOpen="ShowDeleteConfirmation"
+                        OnConfirm="@(async (result) => await HandleDeleteConfirmationAsync(true))"
+                        OnCancel="@(async (result) => await HandleDeleteConfirmationAsync(false))" />
+}

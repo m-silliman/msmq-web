@@ -36,6 +36,8 @@
                          OnMessageSelected="@HandleMessageSelectedAsync"
                          OnSelectionChanged="@HandleSelectionChangedAsync"
                          OnRefresh="@RefreshMessagesAsync"
+                         OnMessagesDeleted="@HandleMessagesDeletedAsync"
+                         MessageOperationsService="@MessageOperationsService"
                          AutoRefreshEnabled="@AutoRefreshEnabled"
                          RefreshIntervalSeconds="@RefreshIntervalSeconds"
                          IsLoading="@IsLoadingMessages"
