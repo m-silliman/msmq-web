@@ -1,0 +1,14 @@
+/* ===========================
+   ConnectionStatusBadge Component Styles
+   =========================== */
+
+.connection-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-details {
+    font-size: 0.75rem;
+    color: var(--app-text-secondary);
+}

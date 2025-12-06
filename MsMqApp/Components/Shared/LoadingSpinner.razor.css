@@ -1,0 +1,56 @@
+/* Loading Spinner Container */
+.loading-spinner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+/* Small Spinner */
+.loading-spinner-container.spinner-small .spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-width: 0.15rem;
+}
+
+.loading-spinner-container.spinner-small .loading-message {
+    font-size: 0.75rem;
+}
+
+/* Medium Spinner (Default) */
+.loading-spinner-container.spinner-medium .spinner-border {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-width: 0.25rem;
+}
+
+.loading-spinner-container.spinner-medium .loading-message {
+    font-size: 0.875rem;
+}
+
+/* Large Spinner */
+.loading-spinner-container.spinner-large .spinner-border {
+    width: 4rem;
+    height: 4rem;
+    border-width: 0.35rem;
+}
+
+.loading-spinner-container.spinner-large .loading-message {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Loading Message */
+.loading-message {
+    color: var(--bs-secondary);
+    text-align: center;
+    margin-top: 0.25rem;
+}
+
+/* Accessibility - Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .spinner-border {
+        animation-duration: 1.5s;
+    }
+}

@@ -1,0 +1,136 @@
+/* ===========================
+   TreeNode Component Styles
+   =========================== */
+
+.tree-node {
+    display: block;
+    user-select: none;
+}
+
+/* Node Content Container */
+.tree-node-content {
+    display: flex;
+    align-items: center;
+    padding: 0.375rem 0.5rem;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    transition: background-color 0.15s ease;
+    gap: 0.5rem;
+    color: var(--app-text-primary);
+}
+
+.tree-node-content:hover {
+    background-color: var(--app-bg-tertiary);
+}
+
+.tree-node-content:focus {
+    outline: 2px solid #258cfb;
+    outline-offset: -2px;
+}
+
+/* Selected State */
+.tree-node-selected {
+    background-color: var(--app-bg-tertiary);
+    font-weight: 500;
+}
+
+.tree-node-selected:hover {
+    background-color: var(--app-bg-tertiary);
+}
+
+/* Toggle Button */
+.tree-node-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--app-text-secondary);
+    transition: color 0.15s ease, transform 0.15s ease;
+    flex-shrink: 0;
+}
+
+.tree-node-toggle:hover {
+    color: var(--app-text-primary);
+}
+
+.tree-node-toggle:focus {
+    outline: 2px solid #258cfb;
+    outline-offset: 2px;
+    border-radius: 0.125rem;
+}
+
+.tree-node-toggle i {
+    font-size: 0.75rem;
+}
+
+/* Spacer for nodes without children */
+.tree-node-spacer {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+/* Node Icon */
+.tree-node-icon {
+    font-size: 1rem;
+    color: var(--app-text-secondary);
+    flex-shrink: 0;
+}
+
+/* Node Text */
+.tree-node-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+/* Badge */
+.tree-node-badge {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    flex-shrink: 0;
+    min-width: 1.5rem;
+    text-align: center;
+}
+
+/* Children Container */
+.tree-node-children {
+    display: block;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .tree-node-content,
+    .tree-node-toggle {
+        transition: none;
+    }
+}
+
+/* Dark Mode Specific Adjustments */
+[data-bs-theme="dark"] .tree-node-badge {
+    background-color: var(--app-bg-tertiary) !important;
+    color: var(--app-text-primary);
+}
+
+/* Focus visible for keyboard navigation */
+.tree-node-content:focus-visible {
+    outline: 2px solid #258cfb;
+    outline-offset: -2px;
+}
+
+.tree-node-toggle:focus-visible {
+    outline: 2px solid #258cfb;
+    outline-offset: 2px;
+}

@@ -1,0 +1,175 @@
+/* ===========================
+   MessageRow Component Styles
+   =========================== */
+
+.message-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 120px 150px 100px;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem; /* Reduced padding for compact rows */
+    border-bottom: 1px solid var(--app-border-color);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    background-color: var(--app-bg-primary);
+    align-items: center;
+    min-height: 2rem; /* Compact row height */
+    font-size: 0.8rem; /* Smaller font for more rows */
+    line-height: 1.2; /* Tighter line height */
+}
+
+.message-row:hover {
+    background-color: var(--app-bg-tertiary);
+}
+
+.message-row:focus {
+    outline: 2px solid #258cfb;
+    outline-offset: -2px;
+}
+
+/* Row States */
+.message-row-selected {
+    background-color: var(--app-bg-tertiary);
+    font-weight: 500;
+}
+
+.message-row-selected:hover {
+    background-color: var(--app-bg-tertiary);
+}
+
+.message-row-checked {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.message-row-expired {
+    opacity: 0.6;
+}
+
+.message-row-expired .message-label-text {
+    text-decoration: line-through;
+}
+
+.message-row-high-priority {
+    border-left: 3px solid var(--bs-danger);
+}
+
+/* Cell Styling - Compact */
+.message-row-cell {
+    display: flex;
+    align-items: center;
+    font-size: 0.8rem; /* Smaller font size */
+    overflow: hidden;
+    padding: 0.125rem 0; /* Minimal internal padding */
+}
+
+.message-cell-select {
+    justify-content: center;
+}
+
+.message-cell-select input[type="checkbox"] {
+    margin: 0;
+    transform: scale(0.85); /* Smaller checkboxes */
+}
+
+.message-cell-label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+    overflow: hidden;
+}
+
+.message-label-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+    font-size: 0.8rem; /* Compact font size */
+    font-weight: 500;
+}
+
+.message-id-text {
+    font-size: 0.7rem; /* Smaller ID text */
+    color: var(--app-text-muted);
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+    margin-top: 0.05rem; /* Minimal spacing */
+}
+
+.message-cell-priority {
+    justify-content: flex-start;
+}
+
+.message-cell-priority .badge {
+    font-size: 0.65rem; /* Smaller badge text */
+    padding: 0.15rem 0.4rem; /* Compact badge padding */
+    min-width: 3.5rem; /* Smaller minimum width */
+    text-align: center;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.message-cell-arrived {
+    color: var(--app-text-secondary);
+    font-size: 0.75rem; /* Smaller timestamp font */
+    text-align: right;
+    font-variant-numeric: tabular-nums; /* Better number alignment */
+}
+
+.message-cell-size {
+    justify-content: flex-end;
+    color: var(--app-text-secondary);
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem; /* Smaller size font */
+    text-align: right;
+    font-variant-numeric: tabular-nums; /* Better number alignment */
+    font-weight: 500;
+}
+
+/* Ultra-compact mode for small screens */
+@media (max-height: 700px) {
+    .message-row {
+        padding: 0.15rem 0.5rem; /* Extra compact padding */
+        min-height: 1.75rem; /* Smaller minimum height */
+        font-size: 0.75rem; /* Even smaller font */
+        gap: 0.25rem; /* Reduced gap */
+    }
+    
+    .message-row-cell {
+        font-size: 0.75rem;
+    }
+    
+    .message-label-text {
+        font-size: 0.75rem;
+    }
+    
+    .message-id-text {
+        font-size: 0.65rem;
+        margin-top: 0.025rem;
+    }
+    
+    .message-cell-priority .badge {
+        font-size: 0.6rem;
+        padding: 0.1rem 0.3rem;
+        min-width: 3rem;
+    }
+    
+    .message-cell-arrived,
+    .message-cell-size {
+        font-size: 0.7rem;
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .message-row {
+        transition: none;
+    }
+}
+
+/* Dark Mode Adjustments */
+[data-bs-theme="dark"] .message-row-checked {
+    background-color: rgba(13, 110, 253, 0.15);
+}

@@ -412,8 +412,6 @@ wwwroot/js/*.min.js
 wwwroot/js/*.min.js.map
 
 # Blazor Server compiled CSS
-*.razor.css
-*.razor.rz.scp.css
 
 # Compiled Sass/SCSS
 *.css.map
