@@ -201,12 +201,21 @@ public class MsmqService : IMsmqService
 
         try
         {
-            _logger.LogInformation("Retrieving journal messages from {JournalQueuePath}", journalQueuePath);
+            _logger.LogWarning("===> Retrieving journal messages from {JournalQueuePath}", journalQueuePath);
+
+            // Convert DIRECT format to FormatName format for the MessageQueue constructor
+            string queuePath = journalQueuePath;
+            if (journalQueuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
+            {
+                queuePath = $"FormatName:{journalQueuePath}";
+            }
+
+            using var journalQueue = new MessageQueue(queuePath);
 
             // The journalQueuePath should already have ;journal appended by the caller
             // Skip existence check for FormatNames as MessageQueue.Exists() doesn't support them
             // Instead, just try to access and handle exceptions
-            using var journalQueue = new MessageQueue(journalQueuePath);
+            // using var journalQueue = new MessageQueue(journalQueuePath);
             journalQueue.MessageReadPropertyFilter.SetAll();
 
             var msmqMessages = journalQueue.GetAllMessages();

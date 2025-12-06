@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MsMqApp.Components.Shared;
@@ -125,12 +127,14 @@ public class HomeBase : ComponentBase, IAsyncDisposable
 
             if (queueInfo != null)
             {
+                Console.WriteLine(JsonSerializer.Serialize(queueInfo, new JsonSerializerOptions { WriteIndented = true }));
+
                 // For journal messages, use JournalPath; for regular messages, use FormatName or Path
                 var queuePath = nodeData.ViewType == QueueViewType.JournalMessages
                     ? queueInfo.JournalPath
                     : (!string.IsNullOrEmpty(queueInfo.FormatName) ? queueInfo.FormatName : queueInfo.Path);
 
-                Console.WriteLine($"[DEBUG] QueueInfo FormatName: '{queueInfo.FormatName}', Path: '{queueInfo.Path}'");
+                Console.WriteLine($"[DEBUG] QueueInfo FormatName: '{queueInfo.FormatName}', Path: '{queueInfo.Path}' ViewType: {nodeData.ViewType}");
                 Console.WriteLine($"[DEBUG] Selected path for {nodeData.ViewType}: {queuePath}");
                 await LoadMessagesAsync(queuePath, nodeData.ViewType);
             }
@@ -207,12 +211,13 @@ public class HomeBase : ComponentBase, IAsyncDisposable
                         var queuePath = !string.IsNullOrEmpty(queue.FormatName) ? queue.FormatName : queue.Path;
 
                         // Construct journal path (uppercase JOURNAL for FormatName, lowercase for regular paths)
+                        /*
                         queue.JournalPath = queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase)
                             ? $"{queuePath};journal"
-                            : $"FormatName:{queuePath};journal";
+                            : $"FormatName:{queuePath};journal"; */
 
                         // Get journal message count using the queue path/formatname
-                        var journalCountResult = await MsmqService.GetJournalMessageCountAsync(queuePath);
+                        var journalCountResult = await MsmqService.GetJournalMessageCountAsync(queue.JournalPath);
                         if (journalCountResult.Success)
                         {
                             queue.JournalMessageCount = journalCountResult.Data;

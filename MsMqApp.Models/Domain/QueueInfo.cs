@@ -85,7 +85,43 @@ public class QueueInfo
     /// <summary>
     /// Gets or sets the journal queue path (typically queuePath + ";journal")
     /// </summary>
-    public string JournalPath { get; set; } = string.Empty;
+    // public string JournalPath { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets the journal queue path computed from the main queue path
+    /// </summary>
+    public string JournalPath
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Path))
+                return string.Empty;
+
+            // If it's a format name, append ;JOURNAL
+            if (!string.IsNullOrEmpty(FormatName) && 
+                (FormatName.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase) ||
+                FormatName.StartsWith("PUBLIC=", StringComparison.OrdinalIgnoreCase) ||
+                FormatName.StartsWith("PRIVATE=", StringComparison.OrdinalIgnoreCase)))
+            {
+                return FormatName + ";journal";
+            }
+
+            // For path-based names
+            if (Path.Contains("\\private$\\"))
+            {
+                // Replace \private$\ with \private$\journal$\
+                return Path.Replace("\\private$\\", "\\private$\\journal$\\");
+            }
+            else if (Path.EndsWith("\\private$"))
+            {
+                return Path + "\\journal$";
+            }
+            else
+            {
+                // Fallback - append journal$ 
+                return Path.TrimEnd('\\') + "\\journal$";
+            }
+        }
+    }
 
     /// <summary>
     /// Gets or sets the current message count in the journal queue
@@ -173,7 +209,7 @@ public class QueueInfo
             CanWrite = CanWrite,
             IsLocal = IsLocal,
             UseJournalQueue = UseJournalQueue,
-            JournalPath = JournalPath,
+            // JournalPath = JournalPath,
             JournalMessageCount = JournalMessageCount,
             Authenticate = Authenticate,
             BasePriority = BasePriority,
