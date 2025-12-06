@@ -1068,6 +1068,55 @@ body.drawer-open {
     overflow: hidden;
 }
 
+/* Connection Status Header */
+.connection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, var(--app-bg-secondary) 0%, var(--app-bg-tertiary) 100%);
+    border-bottom: 2px solid var(--app-border-color);
+    flex-shrink: 0;
+}
+
+.connection-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9375rem;
+}
+
+.connection-label {
+    color: var(--app-text-secondary);
+}
+
+.connection-name {
+    color: var(--app-text-primary);
+    font-size: 1rem;
+}
+
+.connection-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Responsive Connection Header */
+@media (max-width: 768px) {
+    .connection-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .connection-info {
+        justify-content: center;
+    }
+
+    .connection-actions {
+        justify-content: center;
+    }
+}
+
 .home-content {
     display: flex;
     flex: 1;

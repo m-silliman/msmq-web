@@ -29,6 +29,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     // Services
     [Inject] protected IMsmqService MsmqService { get; set; } = default!;
     [Inject] protected IMessageOperationsService MessageOperationsService { get; set; } = default!;
+    [Inject] protected IQueueConnectionManager ConnectionManager { get; set; } = default!;
     [Inject] protected IJSRuntime JSRuntime { get; set; } = default!;
 
     // State
@@ -53,22 +54,18 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected DialogSeverity ConfirmDialogSeverity { get; set; } = DialogSeverity.Warning;
     protected string ConfirmButtonText { get; set; } = "Confirm";
 
+    // Connection Dialog State
+    protected bool IsConnectDialogOpen { get; set; }
+    protected string? LastSuccessfulComputer { get; set; }
+    protected ConnectToComputerDialog? ConnectDialogRef { get; set; }
+
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
 
-        // Initialize with a default local connection
-        CurrentConnection = new QueueConnection
-        {
-            ComputerName = Environment.MachineName,
-            DisplayName = "Local Computer",
-            IsLocal = true,
-            Status = ConnectionStatus.Connected
-        };
-
-        // Load queues
-        await RefreshQueuesAsync();
+        // Initialize with default local connection using ConnectionManager
+        await ConnectToLocalhostAsync();
     }
 
     /// <inheritdoc/>
@@ -590,6 +587,83 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected string GetRightPanelStyle()
     {
         return $"width: {100 - _leftPanelWidthPercent}%;";
+    }
+
+    #endregion
+
+    #region Connection Management
+
+    /// <summary>
+    /// Opens the Connect to Computer dialog.
+    /// </summary>
+    protected void OpenConnectDialog()
+    {
+        IsConnectDialogOpen = true;
+    }
+
+    /// <summary>
+    /// Connects to localhost.
+    /// </summary>
+    protected async Task ConnectToLocalhostAsync()
+    {
+        var result = await ConnectionManager.ConnectAsync(".", displayName: $"{Environment.MachineName} (Local)");
+        if (result.Success && result.Data != null)
+        {
+            CurrentConnection = result.Data;
+            LastSuccessfulComputer = ".";
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles connection request from the dialog.
+    /// </summary>
+    protected async Task HandleConnectionRequestAsync(QueueConnection tempConnection)
+    {
+        if (ConnectDialogRef == null) return;
+
+        var computerName = tempConnection.ComputerName;
+
+        try
+        {
+            // Attempt connection via ConnectionManager
+            var result = await ConnectionManager.ConnectAsync(computerName);
+
+            if (result.Success && result.Data != null)
+            {
+                // Connection successful
+                CurrentConnection = result.Data;
+                LastSuccessfulComputer = computerName;
+
+                // Clear any selected queue/messages
+                SelectedQueue = null;
+                SelectedMessage = null;
+                Messages.Clear();
+                IsDetailDrawerOpen = false;
+
+                // Notify dialog of success
+                await ConnectDialogRef.HandleConnectionSuccessAsync(computerName);
+                StateHasChanged();
+            }
+            else
+            {
+                // Connection failed - show error in dialog
+                ConnectDialogRef.HandleConnectionFailure(result.ErrorMessage ?? "Connection failed");
+            }
+        }
+        catch (Exception ex)
+        {
+            ConnectDialogRef.HandleConnectionFailure($"Unexpected error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Handles connection dialog cancellation.
+    /// </summary>
+    protected Task HandleConnectionCancelledAsync()
+    {
+        IsConnectDialogOpen = false;
+        return Task.CompletedTask;
     }
 
     #endregion

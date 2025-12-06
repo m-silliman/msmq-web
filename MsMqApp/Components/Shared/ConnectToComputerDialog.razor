@@ -1,0 +1,115 @@
+@namespace MsMqApp.Components.Shared
+@inherits ConnectToComputerDialogBase
+
+@if (IsOpen)
+{
+    <!-- Backdrop -->
+    <div class="connect-dialog-backdrop @GetBackdropClass()"
+         @onclick="OnBackdropClickAsync"></div>
+
+    <!-- Dialog -->
+    <div class="connect-dialog @GetDialogClass()"
+         role="dialog"
+         aria-labelledby="@DialogTitleId"
+         aria-describedby="@DialogDescriptionId"
+         aria-modal="true">
+
+        <!-- Header -->
+        <div class="connect-dialog-header">
+            <div class="dialog-header-icon">
+                <i class="bi bi-hdd-network-fill" aria-hidden="true"></i>
+            </div>
+            <h5 class="dialog-title" id="@DialogTitleId">Connect to Computer</h5>
+            @if (ShowCloseButton)
+            {
+                <button type="button"
+                        class="btn-close"
+                        @onclick="OnCancelAsync"
+                        aria-label="Close"
+                        disabled="@IsConnecting">
+                </button>
+            }
+        </div>
+
+        <!-- Body -->
+        <div class="connect-dialog-body" id="@DialogDescriptionId">
+            <p class="dialog-description">
+                Enter the name or IP address of the computer with MSMQ installed.
+            </p>
+
+            <form @onsubmit="OnConnectAsync" @onsubmit:preventDefault="true">
+                <div class="mb-3">
+                    <label for="@ComputerNameInputId" class="form-label">Computer Name</label>
+                    <input type="text"
+                           class="form-control @GetInputClass()"
+                           id="@ComputerNameInputId"
+                           placeholder="e.g., MYSERVER01 or 192.168.1.100"
+                           @bind="ComputerName"
+                           @bind:event="oninput"
+                           disabled="@IsConnecting"
+                           autofocus
+                           autocomplete="off" />
+                    @if (!string.IsNullOrWhiteSpace(ValidationError))
+                    {
+                        <div class="invalid-feedback d-block">
+                            @ValidationError
+                        </div>
+                    }
+                    <div class="form-text">
+                        Use <strong>localhost</strong> or <strong>.</strong> for local computer.
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="alert alert-danger d-flex align-items-start" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2 flex-shrink-0" aria-hidden="true"></i>
+                        <div>
+                            <strong>Connection Failed</strong>
+                            <p class="mb-0 mt-1">@ErrorMessage</p>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(LastSuccessfulComputer))
+                {
+                    <div class="last-connection-hint">
+                        <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
+                        Last connected to: <strong>@LastSuccessfulComputer</strong>
+                        <button type="button"
+                                class="btn btn-link btn-sm p-0 ms-2"
+                                @onclick="() => UseLastComputer()"
+                                disabled="@IsConnecting">
+                            Use this
+                        </button>
+                    </div>
+                }
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="connect-dialog-footer">
+            <button type="button"
+                    class="btn btn-secondary"
+                    @onclick="OnCancelAsync"
+                    disabled="@IsConnecting">
+                Cancel
+            </button>
+            <button type="button"
+                    class="btn btn-primary"
+                    @onclick="OnConnectAsync"
+                    disabled="@(IsConnecting || !IsValid)">
+                @if (IsConnecting)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span>Connecting...</span>
+                }
+                else
+                {
+                    <i class="bi bi-link-45deg me-1" aria-hidden="true"></i>
+                    <span>Connect</span>
+                }
+            </button>
+        </div>
+    </div>
+}
