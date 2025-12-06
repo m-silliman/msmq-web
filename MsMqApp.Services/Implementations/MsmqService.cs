@@ -72,7 +72,14 @@ public class MsmqService : IMsmqService
 
         try
         {
-            using var queue = new MessageQueue(queuePath);
+            // Convert DIRECT format to FormatName format for the MessageQueue constructor
+            string actualQueuePath = queuePath;
+            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
+            {
+                actualQueuePath = $"FormatName:{queuePath}";
+            }
+
+            using var queue = new MessageQueue(actualQueuePath);
             var queueInfo = MsmqConverter.ToQueueInfo(queue);
             return Task.FromResult(OperationResult<QueueInfo>.Successful(queueInfo));
         }
@@ -92,7 +99,14 @@ public class MsmqService : IMsmqService
 
         try
         {
-            using var queue = new MessageQueue(queuePath);
+            // Convert DIRECT format to FormatName format for the MessageQueue constructor
+            string actualQueuePath = queuePath;
+            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
+            {
+                actualQueuePath = $"FormatName:{queuePath}";
+            }
+
+            using var queue = new MessageQueue(actualQueuePath);
             var messages = queue.GetAllMessages();
             return Task.FromResult(OperationResult<int>.Successful(messages.Length));
         }
@@ -263,7 +277,14 @@ public class MsmqService : IMsmqService
 
         try
         {
-            using var queue = new MessageQueue(queuePath);
+            // Convert DIRECT format to FormatName format for the MessageQueue constructor
+            string actualQueuePath = queuePath;
+            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
+            {
+                actualQueuePath = $"FormatName:{queuePath}";
+            }
+
+            using var queue = new MessageQueue(actualQueuePath);
             queue.MessageReadPropertyFilter.SetAll();
 
             var msmqMessage = peekOnly ? queue.PeekById(messageId) : queue.ReceiveById(messageId);
@@ -293,7 +314,14 @@ public class MsmqService : IMsmqService
 
         try
         {
-            using var queue = new MessageQueue(queuePath);
+            // Convert DIRECT format to FormatName format for the MessageQueue constructor
+            string actualQueuePath = queuePath;
+            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
+            {
+                actualQueuePath = $"FormatName:{queuePath}";
+            }
+
+            using var queue = new MessageQueue(actualQueuePath);
             queue.MessageReadPropertyFilter.SetAll();
 
             var msmqMessage = peekOnly
@@ -329,7 +357,14 @@ public class MsmqService : IMsmqService
 
         try
         {
-            using var queue = new MessageQueue(queuePath);
+            // Convert DIRECT format to FormatName format for the MessageQueue constructor
+            string actualQueuePath = queuePath;
+            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
+            {
+                actualQueuePath = $"FormatName:{queuePath}";
+            }
+
+            using var queue = new MessageQueue(actualQueuePath);
             queue.ReceiveById(messageId);
 
             _logger.LogInformation("Deleted message {MessageId} from {QueuePath}", messageId, queuePath);
@@ -696,13 +731,21 @@ public class MsmqService : IMsmqService
 
         try
         {
-            // MessageQueue.Exists() doesn't work with FormatName paths
-            // For FormatName paths, try to create a MessageQueue and see if it works
-            if (queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase))
+            // MessageQueue.Exists() doesn't work with FormatName or DIRECT= paths
+            // For these paths, try to create a MessageQueue and see if it works
+            if (queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase) || 
+                queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
             {
                 try
                 {
-                    using var testQueue = new MessageQueue(queuePath);
+                    // Convert DIRECT= format to FormatName format if needed
+                    string actualQueuePath = queuePath;
+                    if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        actualQueuePath = $"FormatName:{queuePath}";
+                    }
+
+                    using var testQueue = new MessageQueue(actualQueuePath);
                     // Try to access a property to verify the queue exists
                     _ = testQueue.CanRead;
                     return Task.FromResult(OperationResult<bool>.Successful(true));
