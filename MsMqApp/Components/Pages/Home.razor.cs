@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MsMqApp.Components.Shared;
@@ -63,6 +62,12 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected bool IsConnectDialogOpen { get; set; }
     protected string? LastSuccessfulComputer { get; set; }
     protected ConnectToComputerDialog? ConnectDialogRef { get; set; }
+
+    // Send Message Dialog State
+    protected bool IsSendMessageDialogOpen { get; set; }
+    protected bool IsSendMessageProcessing { get; set; }
+    protected string? SendMessageErrorMessage { get; set; }
+    protected string? InitialSendQueuePath { get; set; }
 
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
@@ -329,6 +334,116 @@ public class HomeBase : ComponentBase, IAsyncDisposable
         IsPurgeDialogOpen = false;
         PurgeErrorMessage = null;
         IsPurgeProcessing = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    #endregion
+
+    #region Send Message Dialog
+
+    /// <summary>
+    /// Opens the send message dialog with optional initial queue selection.
+    /// </summary>
+    /// <param name="queuePath">Optional initial queue path to pre-select</param>
+    protected Task OpenSendMessageDialogAsync(string? queuePath = null)
+    {
+        if (CurrentConnection == null)
+        {
+            return Task.CompletedTask;
+        }
+
+        InitialSendQueuePath = queuePath ?? SelectedQueue?.Path;
+        SendMessageErrorMessage = null;
+        IsSendMessageProcessing = false;
+        IsSendMessageDialogOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Handles send message confirmation from the dialog.
+    /// </summary>
+    /// <param name="request">The send message request</param>
+    protected async Task HandleSendMessageAsync(SendMessageRequest request)
+    {
+        if (CurrentConnection == null || IsSendMessageProcessing)
+        {
+            return;
+        }
+
+        try
+        {
+            IsSendMessageProcessing = true;
+            SendMessageErrorMessage = null;
+            StateHasChanged();
+
+            // Create QueueMessage from the request
+            var messageBody = new MessageBody(request.MessageContent)
+            {
+                Format = request.Format
+            };
+
+            var queueMessage = new QueueMessage
+            {
+                Label = request.Label,
+                Body = messageBody,
+                Priority = request.Priority,
+                Recoverable = request.Recoverable,
+                TimeToReachQueue = request.TimeToReachQueue,
+                TimeToBeReceived = request.TimeToBeReceived,
+                CorrelationId = request.CorrelationId
+            };
+
+            // Send the message
+            var result = await MsmqService.SendMessageAsync(
+                request.QueuePath,
+                queueMessage,
+                CancellationToken.None);
+
+            if (result.Success)
+            {
+                // Success - close dialog and refresh if sending to currently selected queue
+                IsSendMessageDialogOpen = false;
+                
+                // If we sent to the currently selected queue, refresh the message list
+                if (SelectedQueue != null &&
+                    (string.Equals(request.QueuePath, SelectedQueue.Path, StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(request.QueuePath, SelectedQueue.JournalPath, StringComparison.OrdinalIgnoreCase)))
+                {
+                    await RefreshMessagesAsync();
+                }
+
+                StateHasChanged();
+            }
+            else
+            {
+                // Show error in dialog
+                SendMessageErrorMessage = result.ErrorMessage ?? "Unknown error occurred while sending message.";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            SendMessageErrorMessage = $"Error occurred while sending message: {ex.Message}";
+            StateHasChanged();
+        }
+        finally
+        {
+            IsSendMessageProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles cancellation from the send message dialog.
+    /// </summary>
+    protected Task HandleSendMessageCancelAsync()
+    {
+        IsSendMessageDialogOpen = false;
+        SendMessageErrorMessage = null;
+        IsSendMessageProcessing = false;
+        InitialSendQueuePath = null;
         StateHasChanged();
         return Task.CompletedTask;
     }

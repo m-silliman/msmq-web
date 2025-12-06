@@ -45,6 +45,13 @@ public class QueueTreeViewBase : ComponentBase
     public EventCallback<(QueueInfo Queue, Models.Enums.QueueViewType ViewType)> OnPurgeRequested { get; set; }
 
     /// <summary>
+    /// Gets or sets the callback invoked when the send message button is clicked.
+    /// Passes the selected queue path for pre-selecting in the send dialog.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnSendMessageRequested { get; set; }
+
+    /// <summary>
     /// Gets or sets whether to show the refresh button.
     /// Default is true.
     /// </summary>
@@ -302,6 +309,27 @@ public class QueueTreeViewBase : ComponentBase
     }
 
     /// <summary>
+    /// Handles send message button click events.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    protected async Task OnSendMessageClickedAsync()
+    {
+        if (SelectedQueue == null || !OnSendMessageRequested.HasDelegate)
+        {
+            return;
+        }
+
+        // Determine the queue path to pre-select based on current view type
+        var queuePath = CurrentViewType switch
+        {
+            Models.Enums.QueueViewType.JournalMessages => SelectedQueue.JournalPath ?? SelectedQueue.Path,
+            _ => SelectedQueue.Path
+        };
+
+        await OnSendMessageRequested.InvokeAsync(queuePath);
+    }
+
+    /// <summary>
     /// Determines if the purge button should be visible and enabled.
     /// </summary>
     /// <returns>True if purge button should be shown and enabled.</returns>
@@ -319,6 +347,21 @@ public class QueueTreeViewBase : ComponentBase
             Models.Enums.QueueViewType.JournalMessages => SelectedQueue.JournalMessageCount > 0,
             _ => false
         };
+    }
+
+    /// <summary>
+    /// Determines if the send message button should be visible and enabled.
+    /// </summary>
+    /// <returns>True if send message button should be shown and enabled.</returns>
+    protected bool ShouldShowSendMessageButton()
+    {
+        if (SelectedQueue == null || Connection?.IsRefreshing == true || IsRefreshing)
+        {
+            return false;
+        }
+
+        // Show send button for queue messages only (not for journal queues since you typically don't send to journals)
+        return CurrentViewType == Models.Enums.QueueViewType.QueueMessages;
     }
 
     /// <summary>

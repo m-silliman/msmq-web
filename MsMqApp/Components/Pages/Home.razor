@@ -43,6 +43,7 @@
                            OnNodeSelected="@HandleNodeSelectedAsync"
                            OnRefreshRequested="@RefreshQueuesAsync"
                            OnPurgeRequested="@HandlePurgeRequestedAsync"
+                           OnSendMessageRequested="@OpenSendMessageDialogAsync"
                            ShowRefreshButton="true"
                            ShowConnectionDetails="true" />
         </div>
@@ -108,4 +109,13 @@
                              ErrorMessage="@PurgeErrorMessage"
                              OnConfirm="@HandlePurgeConfirmAsync"
                              OnCancel="@HandlePurgeCancelAsync" />
+
+    <!-- Send Message Dialog -->
+    <SendMessageDialog @bind-IsOpen="@IsSendMessageDialogOpen"
+                       Connection="@CurrentConnection"
+                       InitialQueuePath="@InitialSendQueuePath"
+                       IsProcessing="@IsSendMessageProcessing"
+                       ErrorMessage="@SendMessageErrorMessage"
+                       OnConfirm="@HandleSendMessageAsync"
+                       OnCancel="@HandleSendMessageCancelAsync" />
 </div>

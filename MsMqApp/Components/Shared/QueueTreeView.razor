@@ -23,6 +23,17 @@
                 </button>
             }
 
+            @if (ShouldShowSendMessageButton())
+            {
+                <button class="btn btn-sm btn-primary send-message-button me-2"
+                        @onclick="OnSendMessageClickedAsync"
+                        disabled="@(Connection.IsRefreshing || IsRefreshing)"
+                        title="Send a message to selected queue">
+                    <i class="bi bi-envelope-plus-fill" aria-hidden="true"></i>
+                    <span class="ms-1">Send Message</span>
+                </button>
+            }
+
             @if (ShowRefreshButton)
             {
                 <button class="btn btn-sm btn-outline-secondary refresh-button"
