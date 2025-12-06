@@ -17,6 +17,7 @@ public class SendMessageDialogBase : ComponentBase
     private MessageBodyFormat _selectedFormat = MessageBodyFormat.Text;
     private MessagePriority _selectedPriority = MessagePriority.Normal;
     private bool _recoverable = true;
+    private bool _isTransactional = false;
     private int _timeToReachQueueMinutes = 0; // 0 = infinite
     private int _timeToBeReceivedMinutes = 0; // 0 = infinite
     private string _correlationId = string.Empty;
@@ -166,6 +167,22 @@ public class SendMessageDialogBase : ComponentBase
             if (_recoverable != value)
             {
                 _recoverable = value;
+                StateHasChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets whether the message is transactional.
+    /// </summary>
+    protected bool IsTransactional
+    {
+        get => _isTransactional;
+        set
+        {
+            if (_isTransactional != value)
+            {
+                _isTransactional = value;
                 StateHasChanged();
             }
         }
@@ -358,6 +375,7 @@ public class SendMessageDialogBase : ComponentBase
             Format = SelectedFormat,
             Priority = SelectedPriority,
             Recoverable = Recoverable,
+            IsTransactional = IsTransactional,
             TimeToReachQueue = TimeToReachQueueMinutes > 0 ? TimeSpan.FromMinutes(TimeToReachQueueMinutes) : TimeSpan.MaxValue,
             TimeToBeReceived = TimeToBeReceivedMinutes > 0 ? TimeSpan.FromMinutes(TimeToBeReceivedMinutes) : TimeSpan.MaxValue,
             CorrelationId = CorrelationId
@@ -455,6 +473,7 @@ public class SendMessageDialogBase : ComponentBase
         _selectedFormat = MessageBodyFormat.Text;
         _selectedPriority = MessagePriority.Normal;
         _recoverable = true;
+        _isTransactional = false;
         _timeToReachQueueMinutes = 0;
         _timeToBeReceivedMinutes = 0;
         _correlationId = string.Empty;
@@ -513,6 +532,11 @@ public class SendMessageRequest
     /// Gets or sets whether the message is recoverable.
     /// </summary>
     public bool Recoverable { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether the message is transactional.
+    /// </summary>
+    public bool IsTransactional { get; set; } = false;
 
     /// <summary>
     /// Gets or sets the time to reach queue.

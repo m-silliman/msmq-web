@@ -124,7 +124,6 @@ public static class QueueTreeBuilder
     /// </summary>
     private static TreeNodeData CreateQueueNode(QueueInfo queue, int level)
     {
-        Console.WriteLine($"Creating node for queue: {queue.DisplayName} with MessageCount: {queue.MessageCount} and JournalPath: {queue.JournalPath} JournalMessageCount: {queue.JournalMessageCount}");    
         var queueNode = new TreeNodeData
         {
             Id = queue.Id,

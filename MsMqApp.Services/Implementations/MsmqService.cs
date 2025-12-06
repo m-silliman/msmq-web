@@ -1,6 +1,7 @@
 using Experimental.System.Messaging;
 using Microsoft.Extensions.Logging;
 using MsMqApp.Models.Domain;
+using MsMqApp.Models.Enums;
 using MsMqApp.Models.Results;
 using MsMqApp.Services.Helpers;
 using MsMqApp.Services.Interfaces;
@@ -394,7 +395,271 @@ public class MsmqService : IMsmqService
         ArgumentNullException.ThrowIfNull(queuePath);
         ArgumentNullException.ThrowIfNull(message);
 
-        return Task.FromResult(OperationResult.Failure("Send operation not yet implemented"));
+        try
+        {
+            _logger.LogInformation("Sending message to queue: {QueuePath}", queuePath);
+
+            // Ensure the queue path has FormatName prefix for proper handling
+            var actualQueuePath = queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase)
+                ? queuePath
+                : $"FormatName:{queuePath}";
+
+            _logger.LogInformation("Using queue path: {ActualQueuePath}", actualQueuePath);
+
+            using var queue = new MessageQueue(actualQueuePath);
+            
+            // Log queue properties for debugging
+            try
+            {
+                _logger.LogInformation("Queue properties - CanWrite: {CanWrite}, MachineName: {MachineName}, Path: {Path}", 
+                    queue.CanWrite, queue.MachineName ?? "Unknown", queue.Path ?? "Unknown");
+                
+                if (!queue.CanWrite)
+                {
+                    _logger.LogWarning("Queue {QueuePath} is not writable", queuePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not read queue properties for {QueuePath}", queuePath);
+            }
+            
+            // Convert QueueMessage to System.Messaging.Message
+            var systemMessage = ConvertToSystemMessage(message);
+            _logger.LogInformation("Created system message with Label: '{Label}', Body length: {BodyLength}", 
+                systemMessage.Label, systemMessage.Body?.ToString()?.Length ?? 0);
+
+            // Use the transaction type specified by the user in the message
+            var transactionType = message.IsTransactional 
+                ? MessageQueueTransactionType.Single 
+                : MessageQueueTransactionType.None;
+            _logger.LogInformation("Using transaction type: {TransactionType} (user specified: {IsTransactional}) for queue: {QueuePath}", 
+                transactionType, message.IsTransactional, queuePath);
+
+            // Send the message with appropriate transaction handling
+            bool messageSent = false;
+            MessageQueueTransactionType actualTransactionType = transactionType;
+
+            try
+            {
+                if (transactionType == MessageQueueTransactionType.Single)
+                {
+                    // For transactional queues, use a single internal transaction
+                    queue.Send(systemMessage, MessageQueueTransactionType.Single);
+                    messageSent = true;
+                }
+                else
+                {
+                    // For non-transactional queues or when transactions are not supported
+                    queue.Send(systemMessage, MessageQueueTransactionType.None);
+                    messageSent = true;
+                }
+            }
+            catch (MessageQueueException ex) when (ex.MessageQueueErrorCode == MessageQueueErrorCode.TransactionUsage)
+            {
+                // Transaction usage mismatch - try the opposite transaction type
+                _logger.LogWarning("Transaction type mismatch for {QueuePath}, trying alternative transaction type. Error: {Error}", 
+                    queuePath, ex.Message);
+
+                try
+                {
+                    if (transactionType == MessageQueueTransactionType.Single)
+                    {
+                        // Try without transaction
+                        queue.Send(systemMessage, MessageQueueTransactionType.None);
+                        actualTransactionType = MessageQueueTransactionType.None;
+                        _logger.LogInformation("Successfully sent message using None transaction type after Single failed");
+                    }
+                    else
+                    {
+                        // Try with transaction
+                        queue.Send(systemMessage, MessageQueueTransactionType.Single);
+                        actualTransactionType = MessageQueueTransactionType.Single;
+                        _logger.LogInformation("Successfully sent message using Single transaction type after None failed");
+                    }
+                    messageSent = true;
+                }
+                catch (Exception retryEx)
+                {
+                    _logger.LogError(retryEx, "Both transaction types failed for queue {QueuePath}", queuePath);
+                    throw; // Re-throw the retry exception
+                }
+            }
+
+            if (!messageSent)
+            {
+                throw new InvalidOperationException("Message was not sent successfully");
+            }
+
+            _logger.LogInformation("Successfully sent message to {QueuePath} using transaction type: {TransactionType}", 
+                queuePath, actualTransactionType);
+            
+            // Return success with message ID in metadata
+            var result = OperationResult.Successful();
+            result.Metadata["MessageId"] = systemMessage.Id;
+            result.Metadata["QueuePath"] = queuePath;
+            result.Metadata["Label"] = message.Label;
+            result.Metadata["TransactionType"] = actualTransactionType.ToString();
+            
+            return Task.FromResult(result);
+        }
+        catch (MessageQueueException ex)
+        {
+            var errorMessage = $"MSMQ error sending message to {queuePath}: {ex.Message}";
+            _logger.LogError(ex, errorMessage);
+            return Task.FromResult(OperationResult.Failure(errorMessage, ex));
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = $"Failed to send message to {queuePath}: {ex.Message}";
+            _logger.LogError(ex, errorMessage);
+            return Task.FromResult(OperationResult.Failure(errorMessage, ex));
+        }
+    }
+
+    /// <summary>
+    /// Converts a QueueMessage domain model to a System.Messaging.Message.
+    /// </summary>
+    /// <param name="queueMessage">The domain message to convert</param>
+    /// <returns>A System.Messaging.Message ready to be sent</returns>
+    private static Message ConvertToSystemMessage(QueueMessage queueMessage)
+    {
+        var systemMessage = new Message();
+
+        // Set basic properties
+        if (!string.IsNullOrEmpty(queueMessage.Label))
+        {
+            systemMessage.Label = queueMessage.Label;
+        }
+
+        // Set message body based on format
+        if (queueMessage.Body != null)
+        {
+            SetMessageBody(systemMessage, queueMessage.Body);
+        }
+
+        // Set priority
+        systemMessage.Priority = (Experimental.System.Messaging.MessagePriority)queueMessage.Priority;
+
+        // Set recoverable flag
+        systemMessage.Recoverable = queueMessage.Recoverable;
+
+        // Set timeouts
+        if (queueMessage.TimeToReachQueue != TimeSpan.MaxValue && queueMessage.TimeToReachQueue > TimeSpan.Zero)
+        {
+            systemMessage.TimeToReachQueue = queueMessage.TimeToReachQueue;
+        }
+
+        if (queueMessage.TimeToBeReceived != TimeSpan.MaxValue && queueMessage.TimeToBeReceived > TimeSpan.Zero)
+        {
+            systemMessage.TimeToBeReceived = queueMessage.TimeToBeReceived;
+        }
+
+        // Set correlation ID
+        if (!string.IsNullOrEmpty(queueMessage.CorrelationId))
+        {
+            systemMessage.CorrelationId = queueMessage.CorrelationId;
+        }
+
+        // Set response queue if specified
+        if (!string.IsNullOrEmpty(queueMessage.ResponseQueue))
+        {
+            try
+            {
+                systemMessage.ResponseQueue = new MessageQueue(queueMessage.ResponseQueue);
+            }
+            catch
+            {
+                // Ignore invalid response queue paths
+            }
+        }
+
+        return systemMessage;
+    }
+
+    /// <summary>
+    /// Sets the body of a System.Messaging.Message based on the MessageBody format.
+    /// </summary>
+    /// <param name="systemMessage">The system message to set the body on</param>
+    /// <param name="messageBody">The domain message body</param>
+    private static void SetMessageBody(Message systemMessage, MessageBody messageBody)
+    {
+        switch (messageBody.Format)
+        {
+            case MessageBodyFormat.Text:
+                systemMessage.Body = messageBody.RawContent;
+                systemMessage.Formatter = new ActiveXMessageFormatter();
+                break;
+
+            case MessageBodyFormat.Json:
+                systemMessage.Body = messageBody.RawContent;
+                systemMessage.Formatter = new ActiveXMessageFormatter();
+                break;
+
+            case MessageBodyFormat.Xml:
+                systemMessage.Body = messageBody.RawContent;
+                systemMessage.Formatter = new XmlMessageFormatter(new[] { typeof(string) });
+                break;
+
+            case MessageBodyFormat.Binary:
+                // For binary format, try to parse hex string to bytes
+                if (messageBody.RawBytes != null)
+                {
+                    systemMessage.BodyStream = new MemoryStream(messageBody.RawBytes);
+                }
+                else if (!string.IsNullOrEmpty(messageBody.RawContent))
+                {
+                    try
+                    {
+                        // Try to parse as hex string
+                        var bytes = ConvertHexStringToBytes(messageBody.RawContent);
+                        systemMessage.BodyStream = new MemoryStream(bytes);
+                    }
+                    catch
+                    {
+                        // Fall back to UTF-8 bytes
+                        var bytes = System.Text.Encoding.UTF8.GetBytes(messageBody.RawContent);
+                        systemMessage.BodyStream = new MemoryStream(bytes);
+                    }
+                }
+                break;
+
+            case MessageBodyFormat.Serialized:
+                // For serialized objects, use binary formatter (if available) or fall back to ActiveX
+                systemMessage.Body = messageBody.RawContent;
+                systemMessage.Formatter = new ActiveXMessageFormatter();
+                break;
+
+            default:
+                // Default to text
+                systemMessage.Body = messageBody.RawContent ?? string.Empty;
+                systemMessage.Formatter = new ActiveXMessageFormatter();
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Converts a hex string to byte array.
+    /// </summary>
+    /// <param name="hexString">The hex string to convert</param>
+    /// <returns>Byte array</returns>
+    private static byte[] ConvertHexStringToBytes(string hexString)
+    {
+        // Remove any spaces or formatting
+        hexString = hexString.Replace(" ", "").Replace("-", "").Replace(":", "");
+        
+        if (hexString.Length % 2 != 0)
+        {
+            throw new ArgumentException("Hex string must have an even number of characters");
+        }
+
+        var bytes = new byte[hexString.Length / 2];
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            bytes[i] = Convert.ToByte(hexString.Substring(i * 2, 2), 16);
+        }
+
+        return bytes;
     }
 
     #endregion

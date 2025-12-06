@@ -390,6 +390,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
                 Body = messageBody,
                 Priority = request.Priority,
                 Recoverable = request.Recoverable,
+                IsTransactional = request.IsTransactional,
                 TimeToReachQueue = request.TimeToReachQueue,
                 TimeToBeReceived = request.TimeToBeReceived,
                 CorrelationId = request.CorrelationId
