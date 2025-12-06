@@ -94,6 +94,18 @@ public class MessageDetailBase : ComponentBase
     }
 
     /// <summary>
+    /// Gets the checkmark icon and color for boolean properties.
+    /// </summary>
+    /// <param name="value">The boolean value.</param>
+    /// <returns>A tuple containing the icon class and color class.</returns>
+    protected (string iconClass, string colorClass) GetCheckmarkIcon(bool value)
+    {
+        return value
+            ? ("bi-check-circle-fill", "text-success")
+            : ("bi-x-circle-fill", "text-danger");
+    }
+
+    /// <summary>
     /// Handles the close button click.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>

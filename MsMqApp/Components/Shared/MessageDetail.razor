@@ -7,26 +7,23 @@
     <div class="message-detail-drawer @GetDrawerClass()">
         <div class="message-detail-header">
             <h5 class="message-detail-title">Message Details</h5>
-            <button class="btn btn-sm btn-link message-detail-close" @onclick="OnCloseAsync" title="Close">
-                <i class="bi bi-x-lg" aria-hidden="true"></i>
-            </button>
+            <div class="header-right">
+                <span class="badge @GetPriorityBadgeClass() me-2">@Message.PriorityText</span>
+                <button class="btn btn-sm btn-link message-detail-close" @onclick="OnCloseAsync" title="Close">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            </div>
         </div>
 
         <div class="message-detail-content">
             <!-- Properties Section -->
             <div class="message-detail-section">
-                <h6 class="section-title">Properties</h6>
                 <dl class="property-list">
                     <dt>Message ID</dt>
                     <dd><code>@Message.Id</code></dd>
 
                     <dt>Label</dt>
                     <dd>@Message.Label</dd>
-
-                    <dt>Priority</dt>
-                    <dd>
-                        <span class="badge @GetPriorityBadgeClass()">@Message.PriorityText</span>
-                    </dd>
 
                     <dt>Arrived</dt>
                     <dd>@Message.ArrivedTime.ToString("yyyy-MM-dd HH:mm:ss.fff")</dd>
@@ -52,14 +49,30 @@
                         <dd><code>@BitConverter.ToString(Message.SenderId).Replace("-", "")</code></dd>
                     }
 
-                    <dt>Recoverable</dt>
-                    <dd>@(Message.Recoverable ? "Yes" : "No")</dd>
-
-                    <dt>Authenticated</dt>
-                    <dd>@(Message.Authenticated ? "Yes" : "No")</dd>
-
-                    <dt>Journaled</dt>
-                    <dd>@(Message.UseJournalQueue ? "Yes" : "No")</dd>
+                    <dt>Message Flags</dt>
+                    <dd class="message-flags">
+                        <div class="flag-item">
+                            @{
+                                var recoverableIcon = GetCheckmarkIcon(Message.Recoverable);
+                            }
+                            <i class="bi @recoverableIcon.iconClass @recoverableIcon.colorClass" title="Recoverable"></i>
+                            <span>Recoverable</span>
+                        </div>
+                        <div class="flag-item">
+                            @{
+                                var authenticatedIcon = GetCheckmarkIcon(Message.Authenticated);
+                            }
+                            <i class="bi @authenticatedIcon.iconClass @authenticatedIcon.colorClass" title="Authenticated"></i>
+                            <span>Authenticated</span>
+                        </div>
+                        <div class="flag-item">
+                            @{
+                                var journaledIcon = GetCheckmarkIcon(Message.UseJournalQueue);
+                            }
+                            <i class="bi @journaledIcon.iconClass @journaledIcon.colorClass" title="Journaled"></i>
+                            <span>Journaled</span>
+                        </div>
+                    </dd>
 
                     @if (Message.IsExpired)
                     {
@@ -71,7 +84,7 @@
 
             <!-- Message Body Section -->
             <div class="message-detail-section">
-                <h6 class="section-title">Message Body</h6>
+                <small>Message Body</small>
                 <div class="message-body-container">
                     <MessageBodyViewer MessageBody="@Message.Body"
                                        ShowMetadata="true"
@@ -86,6 +99,8 @@
                     <button class="btn btn-sm btn-outline-danger" @onclick="OnDeleteClickedAsync" disabled="@IsOperationInProgress">
                         <i class="bi bi-trash" aria-hidden="true"></i> Delete
                     </button>
+
+                    <!-- 
                     <button class="btn btn-sm btn-outline-primary" @onclick="OnMoveClickedAsync" disabled="@IsOperationInProgress">
                         <i class="bi bi-arrow-right" aria-hidden="true"></i> Move
                     </button>
@@ -95,6 +110,7 @@
                     <button class="btn btn-sm btn-outline-success" @onclick="OnResendClickedAsync" disabled="@IsOperationInProgress">
                         <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Resend
                     </button>
+                    -->
                 </div>
             </div>
         </div>
