@@ -431,8 +431,33 @@ public class MsmqService : IMsmqService
 
         try
         {
-            var exists = MessageQueue.Exists(queuePath);
-            return Task.FromResult(OperationResult<bool>.Successful(exists));
+            // MessageQueue.Exists() doesn't work with FormatName paths
+            // For FormatName paths, try to create a MessageQueue and see if it works
+            if (queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    using var testQueue = new MessageQueue(queuePath);
+                    // Try to access a property to verify the queue exists
+                    _ = testQueue.CanRead;
+                    return Task.FromResult(OperationResult<bool>.Successful(true));
+                }
+                catch (MessageQueueException ex) when (ex.MessageQueueErrorCode == MessageQueueErrorCode.QueueNotFound)
+                {
+                    return Task.FromResult(OperationResult<bool>.Successful(false));
+                }
+                catch (MessageQueueException ex) when (ex.MessageQueueErrorCode == MessageQueueErrorCode.AccessDenied)
+                {
+                    // Queue exists but we don't have access - still counts as exists
+                    return Task.FromResult(OperationResult<bool>.Successful(true));
+                }
+            }
+            else
+            {
+                // Use standard Exists for regular paths
+                var exists = MessageQueue.Exists(queuePath);
+                return Task.FromResult(OperationResult<bool>.Successful(exists));
+            }
         }
         catch (Exception ex)
         {

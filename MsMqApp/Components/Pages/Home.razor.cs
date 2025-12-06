@@ -477,6 +477,22 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     /// </summary>
     protected async Task HandleDeleteMessageAsync(QueueMessage message)
     {
+        // Check if we're trying to delete from a journal queue
+        if (CurrentViewType == QueueViewType.JournalMessages)
+        {
+            // Journal messages are read-only and cannot be deleted
+            ConfirmDialogTitle = "Cannot Delete Journal Message";
+            ConfirmDialogMessage = "Journal messages are read-only archives and cannot be deleted.\n\nTo remove journal messages, you must purge the entire journal.";
+            ConfirmDialogSeverity = DialogSeverity.Warning;
+            ConfirmButtonText = "OK";
+            IsConfirmDialogOpen = true;
+            
+            // Don't set pending operation since we won't actually delete
+            _pendingOperation = PendingOperation.None;
+            _pendingOperationMessage = null;
+            return;
+        }
+
         _pendingOperationMessage = message;
         _pendingOperation = PendingOperation.Delete;
 
@@ -597,8 +613,14 @@ public class HomeBase : ComponentBase, IAsyncDisposable
 
         try
         {
+            // Always use the main queue path for deletion (never the journal path)
+            // Journal messages cannot be deleted individually
+            var queuePath = !string.IsNullOrEmpty(SelectedQueue.FormatName)
+                ? SelectedQueue.FormatName
+                : SelectedQueue.Path;
+
             var result = await MessageOperationsService.DeleteMessageAsync(
-                SelectedQueue.Path,
+                queuePath,
                 _pendingOperationMessage.Id);
 
             if (result.Success)
