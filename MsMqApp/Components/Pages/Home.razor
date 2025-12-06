@@ -42,6 +42,7 @@
                            CurrentViewType="@CurrentViewType"
                            OnNodeSelected="@HandleNodeSelectedAsync"
                            OnRefreshRequested="@RefreshQueuesAsync"
+                           OnPurgeRequested="@HandlePurgeRequestedAsync"
                            ShowRefreshButton="true"
                            ShowConnectionDetails="true" />
         </div>
@@ -98,4 +99,13 @@
                              LastSuccessfulComputer="@LastSuccessfulComputer"
                              OnConnected="@HandleConnectionRequestAsync"
                              OnCancelled="@HandleConnectionCancelledAsync" />
+
+    <!-- Purge Confirmation Dialog -->
+    <PurgeConfirmationDialog @bind-IsOpen="@IsPurgeDialogOpen"
+                             Queue="@SelectedQueue"
+                             ViewType="@CurrentViewType"
+                             IsProcessing="@IsPurgeProcessing"
+                             ErrorMessage="@PurgeErrorMessage"
+                             OnConfirm="@HandlePurgeConfirmAsync"
+                             OnCancel="@HandlePurgeCancelAsync" />
 </div>

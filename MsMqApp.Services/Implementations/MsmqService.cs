@@ -362,7 +362,14 @@ public class MsmqService : IMsmqService
 
         try
         {
-            using var queue = new MessageQueue(queuePath);
+            // Convert DIRECT format to FormatName format for the MessageQueue constructor
+            string actualQueuePath = queuePath;
+            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
+            {
+                actualQueuePath = $"FormatName:{queuePath}";
+            }
+
+            using var queue = new MessageQueue(actualQueuePath);
             var count = queue.GetAllMessages().Length;
             queue.Purge();
 

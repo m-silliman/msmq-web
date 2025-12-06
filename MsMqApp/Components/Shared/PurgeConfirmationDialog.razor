@@ -1,0 +1,112 @@
+@namespace MsMqApp.Components.Shared
+@inherits PurgeConfirmationDialogBase
+
+@if (IsOpen)
+{
+    <!-- Backdrop -->
+    <div class="confirmation-dialog-backdrop @GetBackdropClass()"
+         @onclick="OnBackdropClickAsync"></div>
+
+    <!-- Dialog -->
+    <div class="confirmation-dialog @GetDialogClass()"
+         role="dialog"
+         aria-labelledby="@DialogTitleId"
+         aria-describedby="@DialogMessageId"
+         aria-modal="true">
+
+        <!-- Header -->
+        <div class="confirmation-dialog-header header-danger">
+            <div class="dialog-header-icon">
+                <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+            </div>
+            <h5 class="dialog-title" id="@DialogTitleId">Purge Queue Messages</h5>
+            <button type="button"
+                    class="btn-close"
+                    @onclick="OnCancelAsync"
+                    aria-label="Close"
+                    disabled="@IsProcessing">
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="confirmation-dialog-body" id="@DialogMessageId">
+            <div class="alert alert-danger d-flex align-items-start mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2 flex-shrink-0 mt-1" aria-hidden="true"></i>
+                <div>
+                    <strong>Warning: This action cannot be undone!</strong>
+                    <p class="mb-0 mt-1">
+                        You are about to permanently delete <strong>@MessageCount @ViewTypeText</strong> 
+                        from queue <strong>"@QueueDisplayName"</strong>.
+                    </p>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <p class="text-muted mb-2">
+                    To confirm this destructive operation, please type the exact queue name below:
+                </p>
+                <div class="fw-semibold mb-2 p-2 bg-light border rounded">
+                    <code>@QueueDisplayName</code>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="@QueueNameInputId" class="form-label">Queue Name Confirmation</label>
+                <input type="text"
+                       class="form-control @GetInputValidationClass()"
+                       id="@QueueNameInputId"
+                       placeholder="Enter queue name exactly as shown above"
+                       @bind="EnteredQueueName"
+                       @bind:event="oninput"
+                       disabled="@IsProcessing"
+                       autocomplete="off" />
+                @if (!IsQueueNameValid && !string.IsNullOrEmpty(EnteredQueueName))
+                {
+                    <div class="invalid-feedback d-block">
+                        Queue name does not match. Please enter exactly: <strong>@QueueDisplayName</strong>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="alert alert-danger d-flex align-items-start" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2 flex-shrink-0" aria-hidden="true"></i>
+                    <div>
+                        <strong>Purge Failed</strong>
+                        <p class="mb-0 mt-1">@ErrorMessage</p>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Footer -->
+        <div class="confirmation-dialog-footer">
+            <button type="button"
+                    class="btn btn-secondary"
+                    @onclick="OnCancelAsync"
+                    disabled="@IsProcessing">
+                @if (IsProcessing && !ConfirmClicked)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                Cancel
+            </button>
+            <button type="button"
+                    class="btn btn-danger"
+                    @onclick="OnConfirmAsync"
+                    disabled="@(IsProcessing || !IsQueueNameValid)">
+                @if (IsProcessing && ConfirmClicked)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span>Purging...</span>
+                }
+                else
+                {
+                    <i class="bi bi-trash me-1" aria-hidden="true"></i>
+                    <span>Purge @MessageCount @ViewTypeText</span>
+                }
+            </button>
+        </div>
+    </div>
+}

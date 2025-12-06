@@ -47,6 +47,9 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected bool IsLoadingMessages { get; set; }
     protected bool IsRefreshing { get; set; }
     protected bool AutoRefreshEnabled { get; set; } = true;
+    protected bool IsPurgeDialogOpen { get; set; }
+    protected bool IsPurgeProcessing { get; set; }
+    protected string? PurgeErrorMessage { get; set; }
     protected int RefreshIntervalSeconds { get; set; } = 5;
 
     // Confirmation Dialog State
@@ -239,6 +242,95 @@ public class HomeBase : ComponentBase, IAsyncDisposable
             CurrentConnection.IsRefreshing = false;
             StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// Handles purge request from the queue tree view by opening the confirmation dialog.
+    /// </summary>
+    /// <param name="purgeRequest">Tuple containing the queue and view type to purge.</param>
+    protected Task HandlePurgeRequestedAsync((QueueInfo Queue, QueueViewType ViewType) purgeRequest)
+    {
+        var (queue, viewType) = purgeRequest;
+        
+        // Set up the purge dialog
+        SelectedQueue = queue;
+        CurrentViewType = viewType;
+        PurgeErrorMessage = null;
+        IsPurgeProcessing = false;
+        IsPurgeDialogOpen = true;
+        
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Handles confirmation from the purge dialog.
+    /// </summary>
+    /// <param name="result">The purge confirmation result.</param>
+    protected async Task HandlePurgeConfirmAsync(PurgeConfirmationResult result)
+    {
+        try
+        {
+            IsPurgeProcessing = true;
+            PurgeErrorMessage = null;
+            StateHasChanged();
+
+            // Determine the correct queue path for purging
+            string queuePathToPurge;
+            if (result.ViewType == QueueViewType.JournalMessages)
+            {
+                queuePathToPurge = result.Queue.JournalPath;
+            }
+            else
+            {
+                queuePathToPurge = !string.IsNullOrEmpty(result.Queue.FormatName)
+                    ? result.Queue.FormatName
+                    : result.Queue.Path;
+            }
+
+            // Perform the purge
+            var purgeResult = await MsmqService.PurgeQueueAsync(queuePathToPurge);
+
+            if (purgeResult.Success)
+            {
+                // Success - close dialog and refresh
+                IsPurgeDialogOpen = false;
+                
+                // Refresh the queue data and current view
+                await RefreshQueuesAsync();
+                await RefreshMessagesAsync();
+
+                StateHasChanged();
+            }
+            else
+            {
+                // Show error in dialog
+                PurgeErrorMessage = purgeResult.ErrorMessage ?? "Unknown error occurred during purge operation.";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            PurgeErrorMessage = $"Error occurred while purging: {ex.Message}";
+            StateHasChanged();
+        }
+        finally
+        {
+            IsPurgeProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles cancellation from the purge dialog.
+    /// </summary>
+    protected Task HandlePurgeCancelAsync()
+    {
+        IsPurgeDialogOpen = false;
+        PurgeErrorMessage = null;
+        IsPurgeProcessing = false;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     #endregion
