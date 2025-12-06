@@ -127,60 +127,59 @@
                     </div>
 
                     @* Advanced Options (Collapsible) *@
-                    <div class="accordion mb-3">
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" 
-                                        data-bs-toggle="collapse" data-bs-target="#advanced-options" 
-                                        aria-expanded="false" aria-controls="advanced-options"
-                                        disabled="@IsProcessing">
-                                    <i class="bi bi-gear text-secondary me-2"></i>
-                                    Advanced Options
-                                </button>
-                            </h2>
-                            <div id="advanced-options" class="accordion-collapse collapse">
-                                <div class="accordion-body">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="time-to-reach" class="form-label">
-                                                <i class="bi bi-clock text-primary me-1"></i>
-                                                Time to Reach Queue (minutes)
-                                            </label>
-                                            <input type="number" id="time-to-reach" class="form-control" 
-                                                   @bind="TimeToReachQueueMinutes" 
-                                                   min="0" max="2147483647"
-                                                   placeholder="0 = infinite"
-                                                   disabled="@IsProcessing" />
-                                            <div class="form-text">Maximum time for message to reach the queue</div>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="time-to-receive" class="form-label">
-                                                <i class="bi bi-hourglass text-primary me-1"></i>
-                                                Time to Be Received (minutes)
-                                            </label>
-                                            <input type="number" id="time-to-receive" class="form-control" 
-                                                   @bind="TimeToBeReceivedMinutes" 
-                                                   min="0" max="2147483647"
-                                                   placeholder="0 = infinite"
-                                                   disabled="@IsProcessing" />
-                                            <div class="form-text">Maximum time for message to be processed</div>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="correlation-id" class="form-label">
-                                            <i class="bi bi-link-45deg text-primary me-1"></i>
-                                            Correlation ID
+                    <div class="border rounded mb-3">
+                        <div class="bg-light border-bottom px-3 py-2">
+                            <button type="button" class="btn btn-link p-0 text-decoration-none d-flex align-items-center w-100"
+                                    @onclick="ToggleAdvancedOptions"
+                                    disabled="@IsProcessing">
+                                <i class="bi @(IsAdvancedOptionsExpanded ? "bi-chevron-down" : "bi-chevron-right") me-2"></i>
+                                <i class="bi bi-gear text-secondary me-2"></i>
+                                <span>Advanced Options</span>
+                            </button>
+                        </div>
+                        @if (IsAdvancedOptionsExpanded)
+                        {
+                            <div class="p-3">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="time-to-reach" class="form-label">
+                                            <i class="bi bi-clock text-primary me-1"></i>
+                                            Time to Reach Queue (minutes)
                                         </label>
-                                        <input type="text" id="correlation-id" class="form-control font-monospace" 
-                                               @bind="CorrelationId" 
-                                               placeholder="Optional correlation identifier..."
-                                               disabled="@IsProcessing"
-                                               maxlength="20" />
-                                        <div class="form-text">Used to correlate related messages</div>
+                                        <input type="number" id="time-to-reach" class="form-control" 
+                                               @bind="TimeToReachQueueMinutes" 
+                                               min="0" max="2147483647"
+                                               placeholder="0 = infinite"
+                                               disabled="@IsProcessing" />
+                                        <div class="form-text">Maximum time for message to reach the queue</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="time-to-receive" class="form-label">
+                                            <i class="bi bi-hourglass text-primary me-1"></i>
+                                            Time to Be Received (minutes)
+                                        </label>
+                                        <input type="number" id="time-to-receive" class="form-control" 
+                                               @bind="TimeToBeReceivedMinutes" 
+                                               min="0" max="2147483647"
+                                               placeholder="0 = infinite"
+                                               disabled="@IsProcessing" />
+                                        <div class="form-text">Maximum time for message to be processed</div>
                                     </div>
                                 </div>
+                                <div class="mb-0">
+                                    <label for="correlation-id" class="form-label">
+                                        <i class="bi bi-link-45deg text-primary me-1"></i>
+                                        Correlation ID
+                                    </label>
+                                    <input type="text" id="correlation-id" class="form-control font-monospace" 
+                                           @bind="CorrelationId" 
+                                           placeholder="Optional correlation identifier..."
+                                           disabled="@IsProcessing"
+                                           maxlength="20" />
+                                    <div class="form-text">Used to correlate related messages</div>
+                                </div>
                             </div>
-                        </div>
+                        }
                     </div>
                 </form>
             </div>

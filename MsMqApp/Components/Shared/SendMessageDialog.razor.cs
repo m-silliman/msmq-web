@@ -22,6 +22,7 @@ public class SendMessageDialogBase : ComponentBase
     private string _correlationId = string.Empty;
     private string? _selectedQueuePath;
     private string? _validationError;
+    private bool _isAdvancedOptionsExpanded = false;
 
     /// <summary>
     /// Gets or sets a value indicating whether the dialog is open.
@@ -252,6 +253,22 @@ public class SendMessageDialogBase : ComponentBase
     protected string? ValidationError => _validationError;
 
     /// <summary>
+    /// Gets or sets whether the advanced options section is expanded.
+    /// </summary>
+    protected bool IsAdvancedOptionsExpanded
+    {
+        get => _isAdvancedOptionsExpanded;
+        set
+        {
+            if (_isAdvancedOptionsExpanded != value)
+            {
+                _isAdvancedOptionsExpanded = value;
+                StateHasChanged();
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets a unique ID for the dialog title.
     /// </summary>
     protected string DialogTitleId { get; } = $"send-message-dialog-title-{Guid.NewGuid():N}";
@@ -380,6 +397,14 @@ public class SendMessageDialogBase : ComponentBase
     }
 
     /// <summary>
+    /// Toggles the advanced options section.
+    /// </summary>
+    protected void ToggleAdvancedOptions()
+    {
+        IsAdvancedOptionsExpanded = !IsAdvancedOptionsExpanded;
+    }
+
+    /// <summary>
     /// Public method to close the dialog (for parent component).
     /// </summary>
     public async Task CloseAsync()
@@ -435,6 +460,7 @@ public class SendMessageDialogBase : ComponentBase
         _correlationId = string.Empty;
         _selectedQueuePath = InitialQueuePath;
         _validationError = null;
+        _isAdvancedOptionsExpanded = false;
     }
 
     /// <summary>
