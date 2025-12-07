@@ -5,12 +5,6 @@
     @if (Connection != null)
     {
         <div class="queue-tree-header">
-            <div class="connection-info">
-                <ConnectionStatusBadge Status="@Connection.Status"
-                                       ShowLabel="true"
-                                       ShowDetails="@ShowConnectionDetails"
-                                       Details="@GetConnectionDetails()" />
-            </div>
 
             @if (ShouldShowPurgeButton())
             {
