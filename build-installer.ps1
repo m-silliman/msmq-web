@@ -49,7 +49,7 @@ $ServiceName = "MSMQMonitor"
 $AppExe = "MsMqApp.exe"
 $AppDescription = "Web-based MSMQ Manager and Monitor Tool"
 $AppWebsite = "https://github.com/m-silliman/msmq-web"
-$DefaultPort = "8080"
+$DefaultPort = "9090"
 
 # Get script directory
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -259,10 +259,14 @@ SectionEnd
 
 Section "Windows Service" SecService
   
-  ;Configure service port in appsettings.json if different from default
-  Push "`$INSTDIR\appsettings.json"
-  Push `$ServicePort
-  Call UpdateAppSettingsPort
+  ;Copy PowerShell script for port configuration
+  File "update-port.ps1"
+  
+  ;Execute PowerShell script to update configuration
+  ExecWait 'powershell.exe -ExecutionPolicy Bypass -File "`$INSTDIR\update-port.ps1" -InstallDir "`$INSTDIR" -Port `$ServicePort' `$0
+  
+  ;Clean up temporary script
+  Delete "`$INSTDIR\update-port.ps1"
   
   ;Install Windows service using sc command
   ExecWait 'sc create "$ServiceName" binPath= "`$INSTDIR\$AppExe" start= auto DisplayName= "$AppDisplayName"' `$0
@@ -385,10 +389,7 @@ FunctionEnd
 ;--------------------------------
 ;Helper Functions
 
-Function UpdateAppSettingsPort
-  ; Skip JSON modification - use PowerShell post-install instead
-  ; The service will use the default port configuration
-FunctionEnd
+
 
 ;--------------------------------
 ;Initialization
@@ -472,6 +473,28 @@ SOFTWARE.
 $licensePath = Join-Path $outputFullPath "license.txt"
 Set-Content -Path $licensePath -Value $licenseContent -Encoding UTF8
 
+# Create PowerShell script for port configuration
+$portUpdateScript = @'
+param([string]$InstallDir, [int]$Port)
+
+$configPath = Join-Path $InstallDir 'appsettings.json'
+if (Test-Path $configPath) {
+    try {
+        $config = Get-Content $configPath | ConvertFrom-Json
+        $config.Service.Port = $Port
+        $config | ConvertTo-Json -Depth 10 | Set-Content $configPath
+        Write-Host "Updated port configuration to $Port"
+    } catch {
+        Write-Host "Error updating configuration: $_"
+    }
+} else {
+    Write-Host "Configuration file not found: $configPath"
+}
+'@
+
+$portScriptPath = Join-Path $outputFullPath "update-port.ps1"
+Set-Content -Path $portScriptPath -Value $portUpdateScript -Encoding UTF8
+
 # Write the NSIS script
 $nsisScriptPath = Join-Path $outputFullPath "installer.nsi"
 Set-Content -Path $nsisScriptPath -Value $nsisScript -Encoding UTF8
@@ -533,7 +556,7 @@ if ($installerFile) {
     Write-Host "Usage:" -ForegroundColor Cyan
     Write-Host "  Run the installer as Administrator to install $AppDisplayName" -ForegroundColor Yellow
     Write-Host "  The installer will guide you through service configuration" -ForegroundColor Yellow
-    Write-Host "  Default web interface: http://localhost:$DefaultPort" -ForegroundColor Yellow
+    Write-Host "  Default web interface: http://localhost:9090" -ForegroundColor Yellow
     Write-Host ""
     
     # NSIS script already exists in output directory for reference

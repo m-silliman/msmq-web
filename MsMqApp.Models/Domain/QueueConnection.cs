@@ -173,7 +173,7 @@ public class QueueConnection
     {
         ConnectionStatus.NotConnected => "Not connected",
         ConnectionStatus.Connecting => "Connecting...",
-        ConnectionStatus.Connected => $"Connected ({TotalQueues} queues, {TotalMessages} messages)",
+        ConnectionStatus.Connected => $"Connected",
         ConnectionStatus.Failed => $"Failed: {ErrorMessage}",
         ConnectionStatus.Disconnected => "Disconnected",
         ConnectionStatus.Timeout => "Connection timeout",
