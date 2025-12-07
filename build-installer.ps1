@@ -36,7 +36,7 @@ param(
     [string]$OutputPath = ".\installer",
     [string]$DistPath = ".\dist",
     [string]$AppVersion = "1.0.0",
-    [string]$CompanyName = "Your Company",
+    [string]$CompanyName = "MTS",
     [string]$NSISPath = $null
 )
 
