@@ -5,6 +5,34 @@
 <PageTitle>MSMQ Manager - Home</PageTitle>
 
 <div class="home-page">
+    <!-- Connection Status Header -->
+    <div class="connection-header">
+        <div class="connection-info">
+            <i class="bi bi-hdd-network me-2"></i>
+            <span class="connection-label">Connected to:</span>
+            <strong class="connection-name">@(CurrentConnection?.DisplayName ?? "Not Connected")</strong>
+            @if (CurrentConnection != null)
+            {
+                <ConnectionStatusBadge Status="@CurrentConnection.Status" />
+            }
+        </div>
+        <div class="connection-actions">
+            <button class="btn btn-sm btn-outline-primary me-2"
+                    @onclick="ConnectToLocalhostAsync"
+                    disabled="@(CurrentConnection?.IsLocal == true)"
+                    title="Connect to local computer">
+                <i class="bi bi-house-door me-1"></i>
+                Localhost
+            </button>
+            <button class="btn btn-sm btn-primary"
+                    @onclick="OpenConnectDialog"
+                    title="Connect to a remote computer">
+                <i class="bi bi-link-45deg me-1"></i>
+                Connect to Computer...
+            </button>
+        </div>
+    </div>
+
     <!-- Three-Panel Layout -->
     <div class="home-content">
         <!-- Left Panel: Queue Tree View -->
@@ -14,6 +42,8 @@
                            CurrentViewType="@CurrentViewType"
                            OnNodeSelected="@HandleNodeSelectedAsync"
                            OnRefreshRequested="@RefreshQueuesAsync"
+                           OnPurgeRequested="@HandlePurgeRequestedAsync"
+                           OnSendMessageRequested="@OpenSendMessageDialogAsync"
                            ShowRefreshButton="true"
                            ShowConnectionDetails="true" />
         </div>
@@ -63,4 +93,29 @@
                         ConfirmButtonText="@ConfirmButtonText"
                         OnConfirm="@HandleConfirmAsync"
                         OnCancel="@HandleCancelAsync" />
+
+    <!-- Connect to Computer Dialog -->
+    <ConnectToComputerDialog @ref="ConnectDialogRef"
+                             @bind-IsOpen="@IsConnectDialogOpen"
+                             LastSuccessfulComputer="@LastSuccessfulComputer"
+                             OnConnected="@HandleConnectionRequestAsync"
+                             OnCancelled="@HandleConnectionCancelledAsync" />
+
+    <!-- Purge Confirmation Dialog -->
+    <PurgeConfirmationDialog @bind-IsOpen="@IsPurgeDialogOpen"
+                             Queue="@SelectedQueue"
+                             ViewType="@CurrentViewType"
+                             IsProcessing="@IsPurgeProcessing"
+                             ErrorMessage="@PurgeErrorMessage"
+                             OnConfirm="@HandlePurgeConfirmAsync"
+                             OnCancel="@HandlePurgeCancelAsync" />
+
+    <!-- Send Message Dialog -->
+    <SendMessageDialog @bind-IsOpen="@IsSendMessageDialogOpen"
+                       Connection="@CurrentConnection"
+                       InitialQueuePath="@InitialSendQueuePath"
+                       IsProcessing="@IsSendMessageProcessing"
+                       ErrorMessage="@SendMessageErrorMessage"
+                       OnConfirm="@HandleSendMessageAsync"
+                       OnCancel="@HandleSendMessageCancelAsync" />
 </div>

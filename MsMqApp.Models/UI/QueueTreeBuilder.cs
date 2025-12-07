@@ -140,7 +140,7 @@ public static class QueueTreeBuilder
         };
 
         // Add "Queue Messages" child node
-        queueNode.Children.Add(new TreeNodeData
+        var messageQNode = new TreeNodeData
         {
             Id = $"{queue.Id}_messages",
             Text = "Queue Messages",
@@ -151,10 +151,10 @@ public static class QueueTreeBuilder
             Level = level + 1,
             Data = queue,
             ViewType = QueueViewType.QueueMessages
-        });
+        };
+        queueNode.Children.Add(messageQNode);
 
-        // Add "Journal Messages" child node
-        queueNode.Children.Add(new TreeNodeData
+        var journalQNode = new TreeNodeData
         {
             Id = $"{queue.Id}_journal",
             Text = "Journal Messages",
@@ -162,10 +162,11 @@ public static class QueueTreeBuilder
             BadgeCount = queue.JournalMessageCount > 0 ? queue.JournalMessageCount : null,
             IsExpanded = false,
             HasChildren = false,
-            Level = level + 1,
+            Level = level + 1,        
             Data = queue,
             ViewType = QueueViewType.JournalMessages
-        });
+        };
+        queueNode.Children.Add(journalQNode);
 
         return queueNode;
     }

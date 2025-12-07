@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MsMqApp.Components.Shared;
@@ -29,6 +30,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     // Services
     [Inject] protected IMsmqService MsmqService { get; set; } = default!;
     [Inject] protected IMessageOperationsService MessageOperationsService { get; set; } = default!;
+    [Inject] protected IQueueConnectionManager ConnectionManager { get; set; } = default!;
     [Inject] protected IJSRuntime JSRuntime { get; set; } = default!;
 
     // State
@@ -44,6 +46,9 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected bool IsLoadingMessages { get; set; }
     protected bool IsRefreshing { get; set; }
     protected bool AutoRefreshEnabled { get; set; } = true;
+    protected bool IsPurgeDialogOpen { get; set; }
+    protected bool IsPurgeProcessing { get; set; }
+    protected string? PurgeErrorMessage { get; set; }
     protected int RefreshIntervalSeconds { get; set; } = 5;
 
     // Confirmation Dialog State
@@ -53,22 +58,24 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected DialogSeverity ConfirmDialogSeverity { get; set; } = DialogSeverity.Warning;
     protected string ConfirmButtonText { get; set; } = "Confirm";
 
+    // Connection Dialog State
+    protected bool IsConnectDialogOpen { get; set; }
+    protected string? LastSuccessfulComputer { get; set; }
+    protected ConnectToComputerDialog? ConnectDialogRef { get; set; }
+
+    // Send Message Dialog State
+    protected bool IsSendMessageDialogOpen { get; set; }
+    protected bool IsSendMessageProcessing { get; set; }
+    protected string? SendMessageErrorMessage { get; set; }
+    protected string? InitialSendQueuePath { get; set; }
+
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
 
-        // Initialize with a default local connection
-        CurrentConnection = new QueueConnection
-        {
-            ComputerName = Environment.MachineName,
-            DisplayName = "Local Computer",
-            IsLocal = true,
-            Status = ConnectionStatus.Connected
-        };
-
-        // Load queues
-        await RefreshQueuesAsync();
+        // Initialize with default local connection using ConnectionManager
+        await ConnectToLocalhostAsync();
     }
 
     /// <inheritdoc/>
@@ -128,12 +135,14 @@ public class HomeBase : ComponentBase, IAsyncDisposable
 
             if (queueInfo != null)
             {
+                Console.WriteLine(JsonSerializer.Serialize(queueInfo, new JsonSerializerOptions { WriteIndented = true }));
+
                 // For journal messages, use JournalPath; for regular messages, use FormatName or Path
                 var queuePath = nodeData.ViewType == QueueViewType.JournalMessages
                     ? queueInfo.JournalPath
                     : (!string.IsNullOrEmpty(queueInfo.FormatName) ? queueInfo.FormatName : queueInfo.Path);
 
-                Console.WriteLine($"[DEBUG] QueueInfo FormatName: '{queueInfo.FormatName}', Path: '{queueInfo.Path}'");
+                Console.WriteLine($"[DEBUG] QueueInfo FormatName: '{queueInfo.FormatName}', Path: '{queueInfo.Path}' ViewType: {nodeData.ViewType}");
                 Console.WriteLine($"[DEBUG] Selected path for {nodeData.ViewType}: {queuePath}");
                 await LoadMessagesAsync(queuePath, nodeData.ViewType);
             }
@@ -210,12 +219,13 @@ public class HomeBase : ComponentBase, IAsyncDisposable
                         var queuePath = !string.IsNullOrEmpty(queue.FormatName) ? queue.FormatName : queue.Path;
 
                         // Construct journal path (uppercase JOURNAL for FormatName, lowercase for regular paths)
+                        /*
                         queue.JournalPath = queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase)
                             ? $"{queuePath};journal"
-                            : $"FormatName:{queuePath};journal";
+                            : $"FormatName:{queuePath};journal"; */
 
                         // Get journal message count using the queue path/formatname
-                        var journalCountResult = await MsmqService.GetJournalMessageCountAsync(queuePath);
+                        var journalCountResult = await MsmqService.GetJournalMessageCountAsync(queue.JournalPath);
                         if (journalCountResult.Success)
                         {
                             queue.JournalMessageCount = journalCountResult.Data;
@@ -237,6 +247,206 @@ public class HomeBase : ComponentBase, IAsyncDisposable
             CurrentConnection.IsRefreshing = false;
             StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// Handles purge request from the queue tree view by opening the confirmation dialog.
+    /// </summary>
+    /// <param name="purgeRequest">Tuple containing the queue and view type to purge.</param>
+    protected Task HandlePurgeRequestedAsync((QueueInfo Queue, QueueViewType ViewType) purgeRequest)
+    {
+        var (queue, viewType) = purgeRequest;
+        
+        // Set up the purge dialog
+        SelectedQueue = queue;
+        CurrentViewType = viewType;
+        PurgeErrorMessage = null;
+        IsPurgeProcessing = false;
+        IsPurgeDialogOpen = true;
+        
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Handles confirmation from the purge dialog.
+    /// </summary>
+    /// <param name="result">The purge confirmation result.</param>
+    protected async Task HandlePurgeConfirmAsync(PurgeConfirmationResult result)
+    {
+        try
+        {
+            IsPurgeProcessing = true;
+            PurgeErrorMessage = null;
+            StateHasChanged();
+
+            // Determine the correct queue path for purging
+            string queuePathToPurge;
+            if (result.ViewType == QueueViewType.JournalMessages)
+            {
+                queuePathToPurge = result.Queue.JournalPath;
+            }
+            else
+            {
+                queuePathToPurge = !string.IsNullOrEmpty(result.Queue.FormatName)
+                    ? result.Queue.FormatName
+                    : result.Queue.Path;
+            }
+
+            // Perform the purge
+            var purgeResult = await MsmqService.PurgeQueueAsync(queuePathToPurge);
+
+            if (purgeResult.Success)
+            {
+                // Success - close dialog and refresh
+                IsPurgeDialogOpen = false;
+                
+                // Refresh the queue data and current view
+                await RefreshQueuesAsync();
+                await RefreshMessagesAsync();
+
+                StateHasChanged();
+            }
+            else
+            {
+                // Show error in dialog
+                PurgeErrorMessage = purgeResult.ErrorMessage ?? "Unknown error occurred during purge operation.";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            PurgeErrorMessage = $"Error occurred while purging: {ex.Message}";
+            StateHasChanged();
+        }
+        finally
+        {
+            IsPurgeProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles cancellation from the purge dialog.
+    /// </summary>
+    protected Task HandlePurgeCancelAsync()
+    {
+        IsPurgeDialogOpen = false;
+        PurgeErrorMessage = null;
+        IsPurgeProcessing = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    #endregion
+
+    #region Send Message Dialog
+
+    /// <summary>
+    /// Opens the send message dialog with optional initial queue selection.
+    /// </summary>
+    /// <param name="queuePath">Optional initial queue path to pre-select</param>
+    protected Task OpenSendMessageDialogAsync(string? queuePath = null)
+    {
+        if (CurrentConnection == null)
+        {
+            return Task.CompletedTask;
+        }
+
+        InitialSendQueuePath = queuePath ?? SelectedQueue?.Path;
+        SendMessageErrorMessage = null;
+        IsSendMessageProcessing = false;
+        IsSendMessageDialogOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Handles send message confirmation from the dialog.
+    /// </summary>
+    /// <param name="request">The send message request</param>
+    protected async Task HandleSendMessageAsync(SendMessageRequest request)
+    {
+        if (CurrentConnection == null || IsSendMessageProcessing)
+        {
+            return;
+        }
+
+        try
+        {
+            IsSendMessageProcessing = true;
+            SendMessageErrorMessage = null;
+            StateHasChanged();
+
+            // Create QueueMessage from the request
+            var messageBody = new MessageBody(request.MessageContent)
+            {
+                Format = request.Format
+            };
+
+            var queueMessage = new QueueMessage
+            {
+                Label = request.Label,
+                Body = messageBody,
+                Priority = request.Priority,
+                Recoverable = request.Recoverable,
+                IsTransactional = request.IsTransactional,
+                TimeToReachQueue = request.TimeToReachQueue,
+                TimeToBeReceived = request.TimeToBeReceived,
+                CorrelationId = request.CorrelationId
+            };
+
+            // Send the message
+            var result = await MsmqService.SendMessageAsync(
+                request.QueuePath,
+                queueMessage,
+                CancellationToken.None);
+
+            if (result.Success)
+            {
+                // Success - close dialog and refresh if sending to currently selected queue
+                IsSendMessageDialogOpen = false;
+                
+                // If we sent to the currently selected queue, refresh the message list
+                if (SelectedQueue != null &&
+                    (string.Equals(request.QueuePath, SelectedQueue.Path, StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(request.QueuePath, SelectedQueue.JournalPath, StringComparison.OrdinalIgnoreCase)))
+                {
+                    await RefreshMessagesAsync();
+                }
+
+                StateHasChanged();
+            }
+            else
+            {
+                // Show error in dialog
+                SendMessageErrorMessage = result.ErrorMessage ?? "Unknown error occurred while sending message.";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            SendMessageErrorMessage = $"Error occurred while sending message: {ex.Message}";
+            StateHasChanged();
+        }
+        finally
+        {
+            IsSendMessageProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles cancellation from the send message dialog.
+    /// </summary>
+    protected Task HandleSendMessageCancelAsync()
+    {
+        IsSendMessageDialogOpen = false;
+        SendMessageErrorMessage = null;
+        IsSendMessageProcessing = false;
+        InitialSendQueuePath = null;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     #endregion
@@ -383,6 +593,22 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     /// </summary>
     protected async Task HandleDeleteMessageAsync(QueueMessage message)
     {
+        // Check if we're trying to delete from a journal queue
+        if (CurrentViewType == QueueViewType.JournalMessages)
+        {
+            // Journal messages are read-only and cannot be deleted
+            ConfirmDialogTitle = "Cannot Delete Journal Message";
+            ConfirmDialogMessage = "Journal messages are read-only archives and cannot be deleted.\n\nTo remove journal messages, you must purge the entire journal.";
+            ConfirmDialogSeverity = DialogSeverity.Warning;
+            ConfirmButtonText = "OK";
+            IsConfirmDialogOpen = true;
+            
+            // Don't set pending operation since we won't actually delete
+            _pendingOperation = PendingOperation.None;
+            _pendingOperationMessage = null;
+            return;
+        }
+
         _pendingOperationMessage = message;
         _pendingOperation = PendingOperation.Delete;
 
@@ -503,8 +729,14 @@ public class HomeBase : ComponentBase, IAsyncDisposable
 
         try
         {
+            // Always use the main queue path for deletion (never the journal path)
+            // Journal messages cannot be deleted individually
+            var queuePath = !string.IsNullOrEmpty(SelectedQueue.FormatName)
+                ? SelectedQueue.FormatName
+                : SelectedQueue.Path;
+
             var result = await MessageOperationsService.DeleteMessageAsync(
-                SelectedQueue.Path,
+                queuePath,
                 _pendingOperationMessage.Id);
 
             if (result.Success)
@@ -590,6 +822,83 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected string GetRightPanelStyle()
     {
         return $"width: {100 - _leftPanelWidthPercent}%;";
+    }
+
+    #endregion
+
+    #region Connection Management
+
+    /// <summary>
+    /// Opens the Connect to Computer dialog.
+    /// </summary>
+    protected void OpenConnectDialog()
+    {
+        IsConnectDialogOpen = true;
+    }
+
+    /// <summary>
+    /// Connects to localhost.
+    /// </summary>
+    protected async Task ConnectToLocalhostAsync()
+    {
+        var result = await ConnectionManager.ConnectAsync(".", displayName: $"{Environment.MachineName} (Local)");
+        if (result.Success && result.Data != null)
+        {
+            CurrentConnection = result.Data;
+            LastSuccessfulComputer = ".";
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles connection request from the dialog.
+    /// </summary>
+    protected async Task HandleConnectionRequestAsync(QueueConnection tempConnection)
+    {
+        if (ConnectDialogRef == null) return;
+
+        var computerName = tempConnection.ComputerName;
+
+        try
+        {
+            // Attempt connection via ConnectionManager
+            var result = await ConnectionManager.ConnectAsync(computerName);
+
+            if (result.Success && result.Data != null)
+            {
+                // Connection successful
+                CurrentConnection = result.Data;
+                LastSuccessfulComputer = computerName;
+
+                // Clear any selected queue/messages
+                SelectedQueue = null;
+                SelectedMessage = null;
+                Messages.Clear();
+                IsDetailDrawerOpen = false;
+
+                // Notify dialog of success
+                await ConnectDialogRef.HandleConnectionSuccessAsync(computerName);
+                StateHasChanged();
+            }
+            else
+            {
+                // Connection failed - show error in dialog
+                ConnectDialogRef.HandleConnectionFailure(result.ErrorMessage ?? "Connection failed");
+            }
+        }
+        catch (Exception ex)
+        {
+            ConnectDialogRef.HandleConnectionFailure($"Unexpected error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Handles connection dialog cancellation.
+    /// </summary>
+    protected Task HandleConnectionCancelledAsync()
+    {
+        IsConnectDialogOpen = false;
+        return Task.CompletedTask;
     }
 
     #endregion

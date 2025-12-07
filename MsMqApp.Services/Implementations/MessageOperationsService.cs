@@ -54,26 +54,7 @@ public class MessageOperationsService : IMessageOperationsService
 
         try
         {
-            // Validate queue exists
-            var queueExistsResult = await _msmqService.QueueExistsAsync(queuePath, cancellationToken);
-            if (!queueExistsResult.Success)
-            {
-                _logger.LogError(
-                    "Failed to verify queue existence for {QueuePath}: {Error}",
-                    queuePath,
-                    queueExistsResult.ErrorMessage);
-                return OperationResult.Failure(
-                    $"Failed to verify queue existence: {queueExistsResult.ErrorMessage}",
-                    queueExistsResult.Exception);
-            }
-
-            if (queueExistsResult.Data == false)
-            {
-                _logger.LogWarning("Queue {QueuePath} does not exist", queuePath);
-                return OperationResult.Failure($"Queue '{queuePath}' does not exist");
-            }
-
-            // Delete the message
+            // Delete the message directly - let MSMQ handle any queue existence issues
             var deleteResult = await _msmqService.DeleteMessageAsync(queuePath, messageId, cancellationToken);
 
             if (deleteResult.Success)

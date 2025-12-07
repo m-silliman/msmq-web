@@ -1,0 +1,241 @@
+@namespace MsMqApp.Components.Shared
+@inherits SendMessageDialogBase
+
+@* Send Message Dialog Modal *@
+<div class="modal-backdrop @GetBackdropClass()" @onclick="OnBackdropClickAsync" @onclick:stopPropagation="false" style="@(IsOpen ? "display: block;" : "display: none;")">
+</div>
+
+<div class="modal @GetDialogClass()" tabindex="-1" 
+     role="dialog" aria-labelledby="@DialogTitleId" aria-describedby="@DialogBodyId" 
+     style="@(IsOpen ? "display: block;" : "display: none;")"
+     @onclick:stopPropagation="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="@DialogTitleId">
+                    <i class="bi bi-envelope-plus-fill text-primary me-2"></i>
+                    Send Message
+                </h5>
+                <button type="button" class="btn-close" @onclick="OnCancelAsync" disabled="@IsProcessing" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body" id="@DialogBodyId">
+                @if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        @ErrorMessage
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(ValidationError))
+                {
+                    <div class="alert @(ValidationError.StartsWith("Warning:", StringComparison.OrdinalIgnoreCase) ? "alert-warning" : "alert-danger")" role="alert">
+                        <i class="bi @(ValidationError.StartsWith("Warning:", StringComparison.OrdinalIgnoreCase) ? "bi-exclamation-triangle" : "bi-exclamation-triangle-fill") me-2"></i>
+                        @ValidationError
+                    </div>
+                }
+
+                <form>
+                    @* Target Queue Selection *@
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="target-queue" class="form-label">
+                                <i class="bi bi-arrow-right-square text-primary me-1"></i>
+                                Target Queue <span class="text-danger">*</span>
+                            </label>
+                            <select id="target-queue" class="form-select" @bind="SelectedQueuePath" disabled="@IsProcessing">
+                                <option value="">Select a queue...</option>
+                                @foreach (var queue in AvailableQueues.OrderBy(q => q.Name))
+                                {
+                                    <optgroup label="@GetQueueDisplayText(queue)">
+                                        <option value="@queue.Path">@GetQueueDisplayText(queue) (Main)</option>
+                                        @if (!string.IsNullOrEmpty(queue.JournalPath))
+                                        {
+                                            <option value="@queue.JournalPath">@GetQueueDisplayText(queue, true)</option>
+                                        }
+                                    </optgroup>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    @* Message Properties Row *@
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="message-label" class="form-label">
+                                <i class="bi bi-tag text-primary me-1"></i>
+                                Message Label <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" id="message-label" class="form-control" 
+                                   @bind="MessageLabel" @bind:event="oninput"
+                                   placeholder="Enter message label..." 
+                                   disabled="@IsProcessing"
+                                   maxlength="249" />
+                        </div>
+                        <div class="col-md-4">
+                            <label for="message-priority" class="form-label">
+                                <i class="bi bi-speedometer2 text-primary me-1"></i>
+                                Priority
+                            </label>
+                            <select id="message-priority" class="form-select" @bind="SelectedPriority" disabled="@IsProcessing">
+                                @foreach (MessagePriority priority in Enum.GetValues<MessagePriority>())
+                                {
+                                    <option value="@priority">@GetPriorityDisplayText(priority)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    @* Message Format and Options Row *@
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="message-format" class="form-label">
+                                <i class="bi bi-file-earmark-code text-primary me-1"></i>
+                                Format
+                            </label>
+                            <select id="message-format" class="form-select" @bind="SelectedFormat" disabled="@IsProcessing">
+                                @foreach (MessageBodyFormat format in Enum.GetValues<MessageBodyFormat>())
+                                {
+                                    <option value="@format">@GetFormatDisplayText(format)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="d-flex gap-4 flex-wrap">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="recoverable" 
+                                           @bind="Recoverable" disabled="@IsProcessing">
+                                    <label class="form-check-label" for="recoverable">
+                                        <i class="bi bi-shield-check text-success me-1"></i>
+                                        Recoverable (survives system restart)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="transactional" 
+                                           @bind="IsTransactional" disabled="@IsProcessing">
+                                    <label class="form-check-label" for="transactional">
+                                        <i class="bi bi-arrow-repeat text-info me-1"></i>
+                                        Transactional (uses MSMQ transactions)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Message Content *@
+                    <div class="mb-3">
+                        <label for="message-content" class="form-label">
+                            <i class="bi bi-file-earmark-text text-primary me-1"></i>
+                            Message Content <span class="text-danger">*</span>
+                        </label>
+                        <textarea id="message-content" class="form-control font-monospace" 
+                                  @bind="MessageContent" @bind:event="oninput"
+                                  rows="8" 
+                                  placeholder="@GetContentPlaceholder()" 
+                                  disabled="@IsProcessing"></textarea>
+                    </div>
+
+                    @* Advanced Options (Collapsible) *@
+                    <div class="border rounded mb-3">
+                        <div class="bg-light border-bottom px-3 py-2">
+                            <button type="button" class="btn btn-link p-0 text-decoration-none d-flex align-items-center w-100"
+                                    @onclick="ToggleAdvancedOptions"
+                                    disabled="@IsProcessing">
+                                <i class="bi @(IsAdvancedOptionsExpanded ? "bi-chevron-down" : "bi-chevron-right") me-2"></i>
+                                <i class="bi bi-gear text-secondary me-2"></i>
+                                <span>Advanced Options</span>
+                            </button>
+                        </div>
+                        @if (IsAdvancedOptionsExpanded)
+                        {
+                            <div class="p-3">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="time-to-reach" class="form-label">
+                                            <i class="bi bi-clock text-primary me-1"></i>
+                                            Time to Reach Queue (minutes)
+                                        </label>
+                                        <input type="number" id="time-to-reach" class="form-control" 
+                                               @bind="TimeToReachQueueMinutes" 
+                                               min="0" max="2147483647"
+                                               placeholder="0 = infinite"
+                                               disabled="@IsProcessing" />
+                                        <div class="form-text">Maximum time for message to reach the queue</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="time-to-receive" class="form-label">
+                                            <i class="bi bi-hourglass text-primary me-1"></i>
+                                            Time to Be Received (minutes)
+                                        </label>
+                                        <input type="number" id="time-to-receive" class="form-control" 
+                                               @bind="TimeToBeReceivedMinutes" 
+                                               min="0" max="2147483647"
+                                               placeholder="0 = infinite"
+                                               disabled="@IsProcessing" />
+                                        <div class="form-text">Maximum time for message to be processed</div>
+                                    </div>
+                                </div>
+                                <div class="mb-0">
+                                    <label for="correlation-id" class="form-label">
+                                        <i class="bi bi-link-45deg text-primary me-1"></i>
+                                        Correlation ID
+                                    </label>
+                                    <input type="text" id="correlation-id" class="form-control font-monospace" 
+                                           @bind="CorrelationId" 
+                                           placeholder="Optional correlation identifier..."
+                                           disabled="@IsProcessing"
+                                           maxlength="20" />
+                                    <div class="form-text">Used to correlate related messages</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="OnCancelAsync" disabled="@IsProcessing">
+                    <i class="bi bi-x-circle me-1"></i>
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="OnConfirmAsync" 
+                        disabled="@(IsProcessing || !IsInputValid)">
+                    @if (IsProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <span>Sending...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-send-fill me-1"></i>
+                        <span>Send Message</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Gets the appropriate placeholder text for the message content based on format.
+    /// </summary>
+    private string GetContentPlaceholder()
+    {
+        return SelectedFormat switch
+        {
+            MessageBodyFormat.Json => @"{
+  ""message"": ""Your JSON message content here"",
+  ""timestamp"": ""2024-01-01T00:00:00Z""
+}",
+            MessageBodyFormat.Xml => @"<?xml version=""1.0"" encoding=""utf-8""?>
+<message>
+  <content>Your XML message content here</content>
+</message>",
+            MessageBodyFormat.Binary => "48656C6C6F20576F726C64 (hexadecimal bytes)",
+            MessageBodyFormat.Serialized => "Serialized object data (advanced users only)",
+            _ => "Enter your message content here..."
+        };
+    }
+}

@@ -82,7 +82,7 @@ builder.Services.AddSingleton<BinaryFormatHandler>();
 builder.Services.AddScoped<IMsmqService, MsmqService>();
 builder.Services.AddScoped<IMessageSerializer, MessageSerializer>();
 builder.Services.AddScoped<IMessageOperationsService, MessageOperationsService>();
-builder.Services.AddSingleton<IQueueConnectionManager, QueueConnectionManager>();
+builder.Services.AddScoped<IQueueConnectionManager, QueueConnectionManager>();
 
 // Register UI services
 builder.Services.AddScoped<IThemeService, ThemeService>();

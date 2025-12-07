@@ -6,12 +6,33 @@
     {
         <div class="queue-tree-header">
             <div class="connection-info">
-                <h6 class="connection-name">@Connection.FormattedDisplayName</h6>
                 <ConnectionStatusBadge Status="@Connection.Status"
                                        ShowLabel="true"
                                        ShowDetails="@ShowConnectionDetails"
                                        Details="@GetConnectionDetails()" />
             </div>
+
+            @if (ShouldShowPurgeButton())
+            {
+                <button class="btn btn-sm btn-danger purge-button me-2"
+                        @onclick="OnPurgeClickedAsync"
+                        disabled="@(Connection.IsRefreshing || IsRefreshing)"
+                        title="Purge all messages from selected queue">
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                    <span class="ms-1">Purge</span>
+                </button>
+            }
+
+            @if (ShouldShowSendMessageButton())
+            {
+                <button class="btn btn-sm btn-primary send-message-button me-2"
+                        @onclick="OnSendMessageClickedAsync"
+                        disabled="@(Connection.IsRefreshing || IsRefreshing)"
+                        title="Send a message to selected queue">
+                    <i class="bi bi-envelope-plus-fill" aria-hidden="true"></i>
+                    <span class="ms-1">Send Message</span>
+                </button>
+            }
 
             @if (ShowRefreshButton)
             {
