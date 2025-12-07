@@ -89,7 +89,7 @@
 
                     @* Message Format and Options Row *@
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="message-format" class="form-label">
                                 <i class="bi bi-file-earmark-code text-primary me-1"></i>
                                 Format
@@ -101,7 +101,19 @@
                                 }
                             </select>
                         </div>
-                        <div class="col-md-6 d-flex align-items-end">
+                        <div class="col-md-4">
+                            <label for="message-encoding" class="form-label">
+                                <i class="bi bi-code text-primary me-1"></i>
+                                Text Encoding
+                            </label>
+                            <select id="message-encoding" class="form-select" @bind="SelectedTextEncoding" disabled="@IsProcessing">
+                                @foreach (var encoding in GetAvailableEncodings())
+                                {
+                                    <option value="@encoding.Key">@encoding.Value</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
                             <div class="d-flex gap-4 flex-wrap">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="recoverable" 

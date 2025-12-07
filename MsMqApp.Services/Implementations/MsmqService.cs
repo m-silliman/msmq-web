@@ -461,8 +461,8 @@ public class MsmqService : IMsmqService
             
             // Convert QueueMessage to System.Messaging.Message
             var systemMessage = ConvertToSystemMessage(message);
-            _logger.LogInformation("Created system message with Label: '{Label}', Body length: {BodyLength}", 
-                systemMessage.Label, systemMessage.Body?.ToString()?.Length ?? 0);
+            _logger.LogInformation("Created system message with Label: '{Label}' for encoding: '{Encoding}'", 
+                systemMessage.Label, message.Body?.Encoding ?? "UTF-8");
 
             // Use the transaction type specified by the user in the message
             var transactionType = message.IsTransactional 
@@ -619,57 +619,93 @@ public class MsmqService : IMsmqService
     /// <param name="messageBody">The domain message body</param>
     private static void SetMessageBody(Message systemMessage, MessageBody messageBody)
     {
-        switch (messageBody.Format)
+        var content = messageBody.RawContent ?? string.Empty;
+        var encoding = GetTextEncoding(messageBody.Encoding);
+
+        // For all text-based formats and non-UTF8 encodings, convert to bytes with specified encoding
+        if (messageBody.Format == MessageBodyFormat.Binary)
         {
-            case MessageBodyFormat.Text:
-                systemMessage.Body = messageBody.RawContent;
-                systemMessage.Formatter = new ActiveXMessageFormatter();
-                break;
-
-            case MessageBodyFormat.Json:
-                systemMessage.Body = messageBody.RawContent;
-                systemMessage.Formatter = new ActiveXMessageFormatter();
-                break;
-
-            case MessageBodyFormat.Xml:
-                systemMessage.Body = messageBody.RawContent;
-                systemMessage.Formatter = new XmlMessageFormatter(new[] { typeof(string) });
-                break;
-
-            case MessageBodyFormat.Binary:
-                // For binary format, try to parse hex string to bytes
-                if (messageBody.RawBytes != null)
+            // Handle binary content
+            if (messageBody.RawBytes != null)
+            {
+                systemMessage.BodyStream = new MemoryStream(messageBody.RawBytes);
+            }
+            else if (!string.IsNullOrEmpty(content))
+            {
+                // Try hex string first, fallback to encoded bytes
+                try
                 {
-                    systemMessage.BodyStream = new MemoryStream(messageBody.RawBytes);
+                    var bytes = ConvertHexStringToBytes(content);
+                    systemMessage.BodyStream = new MemoryStream(bytes);
                 }
-                else if (!string.IsNullOrEmpty(messageBody.RawContent))
+                catch
                 {
-                    try
-                    {
-                        // Try to parse as hex string
-                        var bytes = ConvertHexStringToBytes(messageBody.RawContent);
-                        systemMessage.BodyStream = new MemoryStream(bytes);
-                    }
-                    catch
-                    {
-                        // Fall back to UTF-8 bytes
-                        var bytes = System.Text.Encoding.UTF8.GetBytes(messageBody.RawContent);
-                        systemMessage.BodyStream = new MemoryStream(bytes);
-                    }
+                    var bytes = encoding.GetBytes(content);
+                    systemMessage.BodyStream = new MemoryStream(bytes);
                 }
-                break;
+            }
+            else
+            {
+                systemMessage.Body = string.Empty;
+            }
+        }
+        else if (encoding.WebName.Equals("utf-8", StringComparison.OrdinalIgnoreCase))
+        {
+            // UTF-8: Use simple string body for maximum compatibility
+            systemMessage.Body = content;
+        }
+        else
+        {
+            // Non-UTF8 encodings: Convert to bytes and use BodyStream
+            var bytes = encoding.GetBytes(content);
+            systemMessage.BodyStream = new MemoryStream(bytes);
+        }
 
-            case MessageBodyFormat.Serialized:
-                // For serialized objects, use binary formatter (if available) or fall back to ActiveX
-                systemMessage.Body = messageBody.RawContent;
-                systemMessage.Formatter = new ActiveXMessageFormatter();
-                break;
+        // Set appropriate formatter for all cases
+        systemMessage.Formatter = new ActiveXMessageFormatter();
+    }
 
-            default:
-                // Default to text
-                systemMessage.Body = messageBody.RawContent ?? string.Empty;
-                systemMessage.Formatter = new ActiveXMessageFormatter();
-                break;
+
+
+    /// <summary>
+    /// Gets the System.Text.Encoding instance for the specified encoding name.
+    /// </summary>
+    /// <param name="encodingName">The encoding name (e.g., "UTF-8", "UTF-16", "ASCII")</param>
+    /// <returns>The corresponding Encoding instance, defaulting to UTF-8 if invalid</returns>
+    private static System.Text.Encoding GetTextEncoding(string encodingName)
+    {
+        if (string.IsNullOrWhiteSpace(encodingName))
+        {
+            return System.Text.Encoding.UTF8;
+        }
+
+        try
+        {
+            return encodingName.ToUpperInvariant() switch
+            {
+                "UTF-8" => System.Text.Encoding.UTF8,
+                "UTF-16" => System.Text.Encoding.Unicode,
+                "ASCII" => System.Text.Encoding.ASCII,
+                "UTF-32" => System.Text.Encoding.UTF32,
+                "ISO-8859-1" => System.Text.Encoding.Latin1,
+                "WINDOWS-1252" => System.Text.Encoding.GetEncoding("Windows-1252"),
+                _ => System.Text.Encoding.GetEncoding(encodingName)
+            };
+        }
+        catch (ArgumentException)
+        {
+            // Fall back to UTF-8 if the encoding name is invalid
+            return System.Text.Encoding.UTF8;
+        }
+        catch (NotSupportedException)
+        {
+            // Fall back to UTF-8 if the encoding is not supported
+            return System.Text.Encoding.UTF8;
+        }
+        catch
+        {
+            // Fall back to UTF-8 for any other encoding-related exceptions
+            return System.Text.Encoding.UTF8;
         }
     }
 

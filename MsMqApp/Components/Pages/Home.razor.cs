@@ -381,7 +381,8 @@ public class HomeBase : ComponentBase, IAsyncDisposable
             // Create QueueMessage from the request
             var messageBody = new MessageBody(request.MessageContent)
             {
-                Format = request.Format
+                Format = request.Format,
+                Encoding = request.TextEncoding
             };
 
             var queueMessage = new QueueMessage

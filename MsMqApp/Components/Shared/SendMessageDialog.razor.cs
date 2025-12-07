@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using MsMqApp.Models.Domain;
 using MsMqApp.Models.Enums;
-using System.ComponentModel.DataAnnotations;
 
 namespace MsMqApp.Components.Shared;
 
@@ -24,6 +23,7 @@ public class SendMessageDialogBase : ComponentBase
     private string? _selectedQueuePath;
     private string? _validationError;
     private bool _isAdvancedOptionsExpanded = false;
+    private string _selectedTextEncoding = "UTF-8";
 
     /// <summary>
     /// Gets or sets a value indicating whether the dialog is open.
@@ -286,6 +286,22 @@ public class SendMessageDialogBase : ComponentBase
     }
 
     /// <summary>
+    /// Gets or sets the selected text encoding.
+    /// </summary>
+    protected string SelectedTextEncoding
+    {
+        get => _selectedTextEncoding;
+        set
+        {
+            if (_selectedTextEncoding != value)
+            {
+                _selectedTextEncoding = value;
+                StateHasChanged();
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets a unique ID for the dialog title.
     /// </summary>
     protected string DialogTitleId { get; } = $"send-message-dialog-title-{Guid.NewGuid():N}";
@@ -356,6 +372,22 @@ public class SendMessageDialogBase : ComponentBase
     }
 
     /// <summary>
+    /// Gets the available text encoding options.
+    /// </summary>
+    protected static Dictionary<string, string> GetAvailableEncodings()
+    {
+        return new Dictionary<string, string>
+        {
+            { "UTF-8", "UTF-8 (Unicode)" },
+            { "UTF-16", "UTF-16 (Unicode)" },
+            { "ASCII", "ASCII (7-bit)" },
+            { "UTF-32", "UTF-32 (Unicode)" },
+            { "ISO-8859-1", "ISO-8859-1 (Latin-1)" },
+            { "Windows-1252", "Windows-1252 (ANSI)" }
+        };
+    }
+
+    /// <summary>
     /// Handles the confirm button click.
     /// </summary>
     protected async Task OnConfirmAsync()
@@ -378,7 +410,8 @@ public class SendMessageDialogBase : ComponentBase
             IsTransactional = IsTransactional,
             TimeToReachQueue = TimeToReachQueueMinutes > 0 ? TimeSpan.FromMinutes(TimeToReachQueueMinutes) : TimeSpan.MaxValue,
             TimeToBeReceived = TimeToBeReceivedMinutes > 0 ? TimeSpan.FromMinutes(TimeToBeReceivedMinutes) : TimeSpan.MaxValue,
-            CorrelationId = CorrelationId
+            CorrelationId = CorrelationId,
+            TextEncoding = SelectedTextEncoding
         };
 
         if (OnConfirm.HasDelegate)
@@ -480,6 +513,7 @@ public class SendMessageDialogBase : ComponentBase
         _selectedQueuePath = InitialQueuePath;
         _validationError = null;
         _isAdvancedOptionsExpanded = false;
+        _selectedTextEncoding = "UTF-8";
     }
 
     /// <summary>
@@ -552,4 +586,9 @@ public class SendMessageRequest
     /// Gets or sets the correlation ID.
     /// </summary>
     public string CorrelationId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the text encoding to use for the message content.
+    /// </summary>
+    public string TextEncoding { get; set; } = "UTF-8";
 }
