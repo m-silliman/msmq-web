@@ -68,6 +68,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected bool IsSendMessageProcessing { get; set; }
     protected string? SendMessageErrorMessage { get; set; }
     protected string? InitialSendQueuePath { get; set; }
+    protected SendMessageDialog? SendMessageDialogRef { get; set; }
 
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
@@ -405,8 +406,20 @@ public class HomeBase : ComponentBase, IAsyncDisposable
 
             if (result.Success)
             {
-                // Success - close dialog and refresh if sending to currently selected queue
-                IsSendMessageDialogOpen = false;
+                // Success - show success message and optionally close dialog
+                var queueName = SelectedQueue?.Name ?? "queue";
+                var successMessage = $"Message sent successfully to {queueName} at {DateTime.Now:HH:mm:ss} using {request.TextEncoding} encoding";
+                
+                SendMessageDialogRef?.ShowSuccess(successMessage);
+                
+                // Close dialog only if requested
+                if (request.CloseAfterSend)
+                {
+                    IsSendMessageDialogOpen = false;
+                }
+                
+                // Clear any previous error
+                SendMessageErrorMessage = null;
                 
                 // If we sent to the currently selected queue, refresh the message list
                 if (SelectedQueue != null &&
@@ -422,6 +435,8 @@ public class HomeBase : ComponentBase, IAsyncDisposable
             {
                 // Show error in dialog
                 SendMessageErrorMessage = result.ErrorMessage ?? "Unknown error occurred while sending message.";
+                // Clear any previous success message
+                SendMessageDialogRef?.ClearSuccess();
                 StateHasChanged();
             }
         }

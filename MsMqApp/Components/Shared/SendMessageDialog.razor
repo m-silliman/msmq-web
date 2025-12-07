@@ -36,6 +36,15 @@
                     </div>
                 }
 
+                @if (!string.IsNullOrEmpty(SuccessMessage))
+                {
+                    <div class="alert alert-success" role="alert">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        @SuccessMessage
+                        <button type="button" class="btn-close float-end" @onclick="ClearSuccess" aria-label="Close"></button>
+                    </div>
+                }
+
                 <form>
                     @* Target Queue Selection *@
                     <div class="row mb-3">
@@ -211,7 +220,20 @@
                     <i class="bi bi-x-circle me-1"></i>
                     Cancel
                 </button>
-                <button type="button" class="btn btn-primary" @onclick="OnConfirmAsync" 
+                <button type="button" class="btn btn-outline-primary" @onclick="OnSendAsync" 
+                        disabled="@(IsProcessing || !IsInputValid)">
+                    @if (IsProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <span>Sending...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-send me-1"></i>
+                        <span>Send</span>
+                    }
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="OnSendAndCloseAsync" 
                         disabled="@(IsProcessing || !IsInputValid)">
                     @if (IsProcessing)
                     {
@@ -221,7 +243,7 @@
                     else
                     {
                         <i class="bi bi-send-fill me-1"></i>
-                        <span>Send Message</span>
+                        <span>Send & Close</span>
                     }
                 </button>
             </div>

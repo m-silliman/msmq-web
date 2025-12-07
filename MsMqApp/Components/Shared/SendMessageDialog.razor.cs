@@ -10,6 +10,20 @@ namespace MsMqApp.Components.Shared;
 /// </summary>
 public class SendMessageDialogBase : ComponentBase
 {
+    // Static fields to remember user preferences across dialog sessions
+    private static string _rememberedMessageContent = string.Empty;
+    private static string _rememberedMessageLabel = string.Empty;
+    private static MessageBodyFormat _rememberedFormat = MessageBodyFormat.Text;
+    private static MessagePriority _rememberedPriority = MessagePriority.Normal;
+    private static bool _rememberedRecoverable = true;
+    private static bool _rememberedIsTransactional = false;
+    private static int _rememberedTimeToReachQueueMinutes = 0;
+    private static int _rememberedTimeToBeReceivedMinutes = 0;
+    private static string _rememberedCorrelationId = string.Empty;
+    private static bool _rememberedIsAdvancedOptionsExpanded = false;
+    private static string _rememberedTextEncoding = "UTF-8";
+
+    // Instance fields
     private bool _isOpen;
     private string _messageContent = string.Empty;
     private string _messageLabel = string.Empty;
@@ -24,6 +38,8 @@ public class SendMessageDialogBase : ComponentBase
     private string? _validationError;
     private bool _isAdvancedOptionsExpanded = false;
     private string _selectedTextEncoding = "UTF-8";
+    private string? _successMessage;
+    private DateTime? _lastSentTime;
 
     /// <summary>
     /// Gets or sets a value indicating whether the dialog is open.
@@ -270,6 +286,11 @@ public class SendMessageDialogBase : ComponentBase
     protected string? ValidationError => _validationError;
 
     /// <summary>
+    /// Gets the success message to display.
+    /// </summary>
+    protected string? SuccessMessage => _successMessage;
+
+    /// <summary>
     /// Gets or sets whether the advanced options section is expanded.
     /// </summary>
     protected bool IsAdvancedOptionsExpanded
@@ -388,9 +409,25 @@ public class SendMessageDialogBase : ComponentBase
     }
 
     /// <summary>
-    /// Handles the confirm button click.
+    /// Handles the "Send & Close" button click.
     /// </summary>
-    protected async Task OnConfirmAsync()
+    protected async Task OnSendAndCloseAsync()
+    {
+        await SendMessageAsync(closeAfterSend: true);
+    }
+
+    /// <summary>
+    /// Handles the "Send" button click.
+    /// </summary>
+    protected async Task OnSendAsync()
+    {
+        await SendMessageAsync(closeAfterSend: false);
+    }
+
+    /// <summary>
+    /// Sends the message and optionally closes the dialog.
+    /// </summary>
+    private async Task SendMessageAsync(bool closeAfterSend)
     {
         if (IsProcessing || !IsInputValid)
             return;
@@ -398,6 +435,9 @@ public class SendMessageDialogBase : ComponentBase
         ValidateInput();
         if (!IsInputValid)
             return;
+
+        // Save current values for next time
+        SaveRememberedValues();
 
         var request = new SendMessageRequest
         {
@@ -411,13 +451,34 @@ public class SendMessageDialogBase : ComponentBase
             TimeToReachQueue = TimeToReachQueueMinutes > 0 ? TimeSpan.FromMinutes(TimeToReachQueueMinutes) : TimeSpan.MaxValue,
             TimeToBeReceived = TimeToBeReceivedMinutes > 0 ? TimeSpan.FromMinutes(TimeToBeReceivedMinutes) : TimeSpan.MaxValue,
             CorrelationId = CorrelationId,
-            TextEncoding = SelectedTextEncoding
+            TextEncoding = SelectedTextEncoding,
+            CloseAfterSend = closeAfterSend
         };
 
         if (OnConfirm.HasDelegate)
         {
             await OnConfirm.InvokeAsync(request);
         }
+    }
+
+    /// <summary>
+    /// Shows a success message after sending.
+    /// </summary>
+    public void ShowSuccess(string message)
+    {
+        _successMessage = message;
+        _lastSentTime = DateTime.Now;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Clears the success message.
+    /// </summary>
+    public void ClearSuccess()
+    {
+        _successMessage = null;
+        _lastSentTime = null;
+        StateHasChanged();
     }
 
     /// <summary>
@@ -497,23 +558,48 @@ public class SendMessageDialogBase : ComponentBase
     }
 
     /// <summary>
-    /// Resets the dialog state to default values.
+    /// Resets the dialog state to remembered values or defaults.
     /// </summary>
     private void ResetDialogState()
     {
-        _messageContent = string.Empty;
-        _messageLabel = string.Empty;
-        _selectedFormat = MessageBodyFormat.Text;
-        _selectedPriority = MessagePriority.Normal;
-        _recoverable = true;
-        _isTransactional = false;
-        _timeToReachQueueMinutes = 0;
-        _timeToBeReceivedMinutes = 0;
-        _correlationId = string.Empty;
-        _selectedQueuePath = InitialQueuePath;
+        // Load remembered values
+        _messageContent = _rememberedMessageContent;
+        _messageLabel = _rememberedMessageLabel;
+        _selectedFormat = _rememberedFormat;
+        _selectedPriority = _rememberedPriority;
+        _recoverable = _rememberedRecoverable;
+        _isTransactional = _rememberedIsTransactional;
+        _timeToReachQueueMinutes = _rememberedTimeToReachQueueMinutes;
+        _timeToBeReceivedMinutes = _rememberedTimeToBeReceivedMinutes;
+        _correlationId = _rememberedCorrelationId;
+        _isAdvancedOptionsExpanded = _rememberedIsAdvancedOptionsExpanded;
+        _selectedTextEncoding = _rememberedTextEncoding;
+        
+        // Set queue path (use InitialQueuePath if provided, otherwise keep current)
+        _selectedQueuePath = InitialQueuePath ?? _selectedQueuePath;
+        
+        // Clear transient state
         _validationError = null;
-        _isAdvancedOptionsExpanded = false;
-        _selectedTextEncoding = "UTF-8";
+        _successMessage = null;
+        _lastSentTime = null;
+    }
+
+    /// <summary>
+    /// Saves current values to be remembered for next time.
+    /// </summary>
+    private void SaveRememberedValues()
+    {
+        _rememberedMessageContent = _messageContent;
+        _rememberedMessageLabel = _messageLabel;
+        _rememberedFormat = _selectedFormat;
+        _rememberedPriority = _selectedPriority;
+        _rememberedRecoverable = _recoverable;
+        _rememberedIsTransactional = _isTransactional;
+        _rememberedTimeToReachQueueMinutes = _timeToReachQueueMinutes;
+        _rememberedTimeToBeReceivedMinutes = _timeToBeReceivedMinutes;
+        _rememberedCorrelationId = _correlationId;
+        _rememberedIsAdvancedOptionsExpanded = _isAdvancedOptionsExpanded;
+        _rememberedTextEncoding = _selectedTextEncoding;
     }
 
     /// <summary>
@@ -591,4 +677,9 @@ public class SendMessageRequest
     /// Gets or sets the text encoding to use for the message content.
     /// </summary>
     public string TextEncoding { get; set; } = "UTF-8";
+
+    /// <summary>
+    /// Gets or sets whether to close the dialog after sending.
+    /// </summary>
+    public bool CloseAfterSend { get; set; } = true;
 }

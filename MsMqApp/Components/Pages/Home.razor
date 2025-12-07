@@ -111,7 +111,8 @@
                              OnCancel="@HandlePurgeCancelAsync" />
 
     <!-- Send Message Dialog -->
-    <SendMessageDialog @bind-IsOpen="@IsSendMessageDialogOpen"
+    <SendMessageDialog @ref="SendMessageDialogRef"
+                       @bind-IsOpen="@IsSendMessageDialogOpen"
                        Connection="@CurrentConnection"
                        InitialQueuePath="@InitialSendQueuePath"
                        IsProcessing="@IsSendMessageProcessing"
