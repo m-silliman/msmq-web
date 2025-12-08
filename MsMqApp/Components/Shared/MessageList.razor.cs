@@ -53,10 +53,16 @@ public class MessageListBase : ComponentBase
 
     /// <summary>
     /// Gets or sets the auto-refresh interval in seconds.
-    /// Default is 5.
+    /// Default is 10.
     /// </summary>
     [Parameter]
-    public int RefreshIntervalSeconds { get; set; } = 5;
+    public int RefreshIntervalSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// Gets or sets the callback when RefreshIntervalSeconds changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> RefreshIntervalSecondsChanged { get; set; }
 
     /// <summary>
     /// Gets or sets whether the list is currently loading.

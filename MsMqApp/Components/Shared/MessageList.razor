@@ -55,7 +55,7 @@
 
             <RefreshControl OnRefresh="@HandleRefreshAsync"
                             AutoRefreshEnabled="@AutoRefreshEnabled"
-                            RefreshIntervalSeconds="@RefreshIntervalSeconds"
+                            @bind-RefreshIntervalSeconds="@RefreshIntervalSeconds"
                             IsRefreshing="@IsRefreshing"
                             @bind-IsPaused="@IsPaused"
                             ShowCountdown="true"

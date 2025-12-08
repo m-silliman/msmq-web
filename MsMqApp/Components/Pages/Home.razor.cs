@@ -16,6 +16,9 @@ namespace MsMqApp.Components.Pages;
 /// </summary>
 public class HomeBase : ComponentBase, IAsyncDisposable
 {
+    // Static field to persist refresh interval across queue selections and component lifecycle
+    private static int _persistentRefreshIntervalSeconds = 10;
+    
     private bool _disposed;
     private DotNetObjectReference<HomeBase>? _dotNetRef;
     private QueueMessage? _pendingOperationMessage;
@@ -49,7 +52,11 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected bool IsPurgeDialogOpen { get; set; }
     protected bool IsPurgeProcessing { get; set; }
     protected string? PurgeErrorMessage { get; set; }
-    protected int RefreshIntervalSeconds { get; set; } = 5;
+    protected int RefreshIntervalSeconds
+    {
+        get => _persistentRefreshIntervalSeconds;
+        set => _persistentRefreshIntervalSeconds = value;
+    }
 
     // Confirmation Dialog State
     protected bool IsConfirmDialogOpen { get; set; }

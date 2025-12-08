@@ -263,6 +263,10 @@ public class SendMessageDialogBase : ComponentBase
             if (_selectedQueuePath != value)
             {
                 _selectedQueuePath = value;
+                
+                // Auto-set transactional checkbox based on selected queue's transactional status
+                UpdateTransactionalFromSelectedQueue();
+                
                 ValidateInput();
                 StateHasChanged();
             }
@@ -522,6 +526,28 @@ public class SendMessageDialogBase : ComponentBase
     public async Task CloseAsync()
     {
         await CloseDialogAsync();
+    }
+
+    /// <summary>
+    /// Updates the transactional checkbox based on the selected queue's transactional status.
+    /// </summary>
+    private void UpdateTransactionalFromSelectedQueue()
+    {
+        if (string.IsNullOrEmpty(_selectedQueuePath) || Connection?.Queues == null)
+        {
+            return;
+        }
+
+        // Find the selected queue info by matching the path
+        var selectedQueue = Connection.Queues.FirstOrDefault(q =>
+            string.Equals(q.Path, _selectedQueuePath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(q.JournalPath, _selectedQueuePath, StringComparison.OrdinalIgnoreCase));
+
+        if (selectedQueue != null)
+        {
+            // Update the transactional checkbox to match the queue's transactional status
+            _isTransactional = selectedQueue.IsTransactional;
+        }
     }
 
     /// <summary>

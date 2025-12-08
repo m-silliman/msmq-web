@@ -69,7 +69,7 @@
                          OnMessagesDeleted="@HandleMessagesDeletedAsync"
                          MessageOperationsService="@MessageOperationsService"
                          AutoRefreshEnabled="@AutoRefreshEnabled"
-                         RefreshIntervalSeconds="@RefreshIntervalSeconds"
+                         @bind-RefreshIntervalSeconds="@RefreshIntervalSeconds"
                          IsLoading="@IsLoadingMessages"
                          IsRefreshing="@IsRefreshing" />
         </div>

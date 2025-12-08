@@ -26,10 +26,10 @@ public class RefreshControlBase : ComponentBase, IDisposable
 
     /// <summary>
     /// Gets or sets the auto-refresh interval in seconds.
-    /// Default is 5.
+    /// Default is 10.
     /// </summary>
     [Parameter]
-    public int RefreshIntervalSeconds { get; set; } = 5;
+    public int RefreshIntervalSeconds { get; set; } = 10;
 
     /// <summary>
     /// Gets or sets whether the refresh is currently in progress.
@@ -71,15 +71,34 @@ public class RefreshControlBase : ComponentBase, IDisposable
     public bool ShowPauseLabel { get; set; }
 
     /// <summary>
+    /// Gets or sets whether to allow editing the refresh interval.
+    /// Default is true. When true, shows an input field when refresh is stopped.
+    /// </summary>
+    [Parameter]
+    public bool AllowIntervalEditing { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the callback when refresh interval changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> RefreshIntervalSecondsChanged { get; set; }
+
+    /// <summary>
     /// Gets the remaining seconds until next refresh.
     /// </summary>
     protected int RemainingSeconds { get; private set; }
+
+    /// <summary>
+    /// Gets or sets the temporary interval value for editing.
+    /// </summary>
+    protected int EditingIntervalSeconds { get; set; }
 
     /// <inheritdoc/>
     protected override void OnInitialized()
     {
         base.OnInitialized();
         RemainingSeconds = RefreshIntervalSeconds;
+        EditingIntervalSeconds = RefreshIntervalSeconds;
         StartCountdownTimer();
     }
 
@@ -87,6 +106,12 @@ public class RefreshControlBase : ComponentBase, IDisposable
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
+
+        // Sync editing interval with parameter changes
+        if (EditingIntervalSeconds != RefreshIntervalSeconds)
+        {
+            EditingIntervalSeconds = RefreshIntervalSeconds;
+        }
 
         // Reset countdown when refresh completes
         if (!IsRefreshing && RemainingSeconds <= 0)
@@ -174,6 +199,29 @@ public class RefreshControlBase : ComponentBase, IDisposable
 
         StateHasChanged();
     }
+
+    /// <summary>
+    /// Handles when the refresh interval is changed by the user.
+    /// </summary>
+    /// <param name="newInterval">The new interval in seconds.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    protected async Task OnIntervalChangedAsync(int newInterval)
+    {
+        if (newInterval > 0 && newInterval != RefreshIntervalSeconds)
+        {
+            EditingIntervalSeconds = newInterval;
+            
+            if (RefreshIntervalSecondsChanged.HasDelegate)
+            {
+                await RefreshIntervalSecondsChanged.InvokeAsync(newInterval);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets whether the interval input should be shown (when refresh is stopped).
+    /// </summary>
+    protected bool ShowIntervalInput => AllowIntervalEditing && (!AutoRefreshEnabled || IsPaused);
 
     /// <summary>
     /// Starts the countdown timer for auto-refresh.

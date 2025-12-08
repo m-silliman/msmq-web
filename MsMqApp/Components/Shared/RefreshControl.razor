@@ -24,6 +24,25 @@
                 <span class="ms-1">@GetPauseLabel()</span>
             }
         </button>
+
+        @if (ShowIntervalInput)
+        {
+            <div class="refresh-interval-input ms-2">
+                <div class="input-group input-group-sm">
+                    <input type="number" 
+                           class="form-control form-control-sm" 
+                           style="width: 70px;" 
+                           @bind="EditingIntervalSeconds" 
+                           @bind:event="oninput"
+                           @onchange="@(async () => await OnIntervalChangedAsync(EditingIntervalSeconds))"
+                           min="1" 
+                           max="3600"
+                           title="Refresh interval in seconds"
+                           placeholder="@RefreshIntervalSeconds" />
+                    <span class="input-group-text">s</span>
+                </div>
+            </div>
+        }
     </div>
 
     @if (ShowCountdown && AutoRefreshEnabled && !IsPaused)
