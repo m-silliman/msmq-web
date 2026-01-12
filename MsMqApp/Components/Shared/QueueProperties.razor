@@ -39,6 +39,15 @@
                 {
                     <div class="tab-pane active">
                         <div class="properties-form">
+                            @if (!string.IsNullOrEmpty(SuccessMessage))
+                            {
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    @SuccessMessage
+                                    <button type="button" class="btn-close" @onclick="() => SuccessMessage = null"></button>
+                                </div>
+                            }
+
                             @if (!string.IsNullOrEmpty(ValidationError))
                             {
                                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -82,27 +91,15 @@
                                 </div>
                             </div>
 
-                            <!-- Type ID -->
+                            <!-- Type ID (Read-only) -->
                             <div class="form-group row">
-                                <label class="col-sm-3 col-form-label">
-                                    Type ID:
-                                    @if (IsDirty && EditTypeId != (Queue?.TypeId?.ToString().ToUpper() ?? "00000000-0000-0000-0000-000000000000"))
-                                    {
-                                        <span class="text-danger">*</span>
-                                    }
-                                </label>
+                                <label class="col-sm-3 col-form-label">Type ID:</label>
                                 <div class="col-sm-9">
                                     <input type="text" 
-                                           class="form-control @(FieldErrors.ContainsKey("TypeId") ? "is-invalid" : "")" 
-                                           @bind="EditTypeId"
-                                           @bind:event="oninput"
-                                           @onchange="OnFieldChanged"
-                                           placeholder="00000000-0000-0000-0000-000000000000"
-                                           readonly="@(!IsEditMode)" />
-                                    @if (FieldErrors.ContainsKey("TypeId"))
-                                    {
-                                        <div class="invalid-feedback d-block">@FieldErrors["TypeId"]</div>
-                                    }
+                                           class="form-control" 
+                                           value="@GetTypeIdDisplay()"
+                                           readonly />
+                                    <small class="form-text text-muted">Type ID cannot be changed after queue creation</small>
                                 </div>
                             </div>
 

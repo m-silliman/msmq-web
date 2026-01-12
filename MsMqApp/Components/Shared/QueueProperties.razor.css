@@ -180,6 +180,12 @@
     font-size: 0.875rem;
 }
 
+.alert-success {
+    background-color: var(--bs-success-bg-subtle);
+    border-color: var(--bs-success-border-subtle);
+    color: var(--bs-success-text-emphasis);
+}
+
 .alert-danger {
     background-color: var(--bs-danger-bg-subtle);
     border-color: var(--bs-danger-border-subtle);

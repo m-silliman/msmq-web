@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using MsMqApp.Models.Domain;
+using MsMqApp.Services.Interfaces;
 
 namespace MsMqApp.Components.Shared;
 
@@ -7,6 +8,9 @@ public class QueuePropertiesBase : ComponentBase
 {
     [Parameter]
     public QueueInfo? Queue { get; set; }
+
+    [Inject]
+    protected IQueueManagementService QueueManagementService { get; set; } = default!;
 
     protected string ActiveTab { get; set; } = "general";
 
@@ -28,6 +32,7 @@ public class QueuePropertiesBase : ComponentBase
 
     // Validation
     protected string? ValidationError { get; set; }
+    protected string? SuccessMessage { get; set; }
     protected Dictionary<string, string> FieldErrors { get; set; } = new();
 
     protected override void OnParametersSet()
@@ -85,12 +90,6 @@ public class QueuePropertiesBase : ComponentBase
         FieldErrors.Clear();
         ValidationError = null;
 
-        // Validate Type ID as GUID
-        if (!string.IsNullOrWhiteSpace(EditTypeId) && !Guid.TryParse(EditTypeId, out _))
-        {
-            FieldErrors["TypeId"] = "Type ID must be a valid GUID format";
-        }
-
         // Validate storage limits
         if (EditLimitMessageStorage && EditMaximumQueueSize <= 0)
         {
@@ -119,33 +118,58 @@ public class QueuePropertiesBase : ComponentBase
             return;
         }
 
+        if (Queue == null)
+        {
+            ValidationError = "No queue selected";
+            return;
+        }
+
         IsSaving = true;
+        ValidationError = null;
         StateHasChanged();
 
         try
         {
-            // TODO: Call backend service to save properties
-            await Task.Delay(500); // Simulate API call
+            // Use FormatName or Path for queue identification
+            var queuePath = !string.IsNullOrEmpty(Queue.FormatName) ? Queue.FormatName : Queue.Path;
 
-            // For now, just update the local Queue object
-            if (Queue != null)
+            // Call the service to update queue properties
+            var result = await QueueManagementService.UpdateQueuePropertiesAsync(
+                queuePath,
+                EditLabel,
+                EditAuthenticate,
+                EditLimitMessageStorage ? EditMaximumQueueSize : 0,
+                EditPrivacyLevel,
+                EditJournalEnabled,
+                EditLimitJournalStorage ? EditMaximumJournalSize : 0);
+
+            if (result.Success)
             {
+                // Update the local Queue object to reflect the changes
                 Queue.Label = EditLabel;
-                if (Guid.TryParse(EditTypeId, out var typeId))
-                {
-                    Queue.TypeId = typeId;
-                }
                 Queue.Authenticate = EditAuthenticate;
                 Queue.MaximumQueueSize = EditLimitMessageStorage ? EditMaximumQueueSize : 0;
                 Queue.PrivacyLevel = EditPrivacyLevel;
                 Queue.UseJournalQueue = EditJournalEnabled;
                 Queue.MaximumJournalSize = EditLimitJournalStorage ? EditMaximumJournalSize : 0;
-            }
 
-            IsDirty = false;
-            IsEditMode = false;
-            ValidationError = null;
-            // TODO: Show success message
+                IsDirty = false;
+                IsEditMode = false;
+                ValidationError = null;
+                SuccessMessage = "Queue properties updated successfully";
+
+                // Clear success message after 3 seconds
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(3000);
+                    SuccessMessage = null;
+                    await InvokeAsync(StateHasChanged);
+                });
+            }
+            else
+            {
+                ValidationError = result.ErrorMessage ?? "Failed to update queue properties";
+            }
         }
         catch (Exception ex)
         {

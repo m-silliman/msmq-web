@@ -83,6 +83,7 @@ builder.Services.AddScoped<IMsmqService, MsmqService>();
 builder.Services.AddScoped<IMessageSerializer, MessageSerializer>();
 builder.Services.AddScoped<IMessageOperationsService, MessageOperationsService>();
 builder.Services.AddScoped<IQueueConnectionManager, QueueConnectionManager>();
+builder.Services.AddScoped<IQueueManagementService, QueueManagementService>();
 
 // Register UI services
 builder.Services.AddScoped<IThemeService, ThemeService>();
