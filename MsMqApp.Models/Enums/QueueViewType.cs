@@ -24,5 +24,10 @@ public enum QueueViewType
     /// <summary>
     /// A node representing the queue's journal messages container
     /// </summary>
-    JournalMessages
+    JournalMessages,
+
+    /// <summary>
+    /// View for displaying queue properties (configuration, permissions, etc.)
+    /// </summary>
+    QueueProperties
 }

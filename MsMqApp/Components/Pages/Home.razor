@@ -56,22 +56,29 @@
             <div class="splitter-handle"></div>
         </div>
 
-        <!-- Right Panel: Message List -->
+        <!-- Right Panel: Message List or Queue Properties -->
         <div class="right-panel" style="@GetRightPanelStyle()">
-            <MessageList Messages="@Messages"
-                         SelectedQueue="@SelectedQueue"
-                         ViewType="@CurrentViewType"
-                         SelectedMessage="@SelectedMessage"
-                         SelectedMessageChanged="@HandleMessageSelectedAsync"
-                         OnMessageSelected="@HandleMessageSelectedAsync"
-                         OnSelectionChanged="@HandleSelectionChangedAsync"
-                         OnRefresh="@RefreshMessagesAsync"
-                         OnMessagesDeleted="@HandleMessagesDeletedAsync"
-                         MessageOperationsService="@MessageOperationsService"
-                         AutoRefreshEnabled="@AutoRefreshEnabled"
-                         @bind-RefreshIntervalSeconds="@RefreshIntervalSeconds"
-                         IsLoading="@IsLoadingMessages"
-                         IsRefreshing="@IsRefreshing" />
+            @if (CurrentViewType == QueueViewType.QueueProperties)
+            {
+                <QueueProperties Queue="@SelectedQueue" />
+            }
+            else
+            {
+                <MessageList Messages="@Messages"
+                             SelectedQueue="@SelectedQueue"
+                             ViewType="@CurrentViewType"
+                             SelectedMessage="@SelectedMessage"
+                             SelectedMessageChanged="@HandleMessageSelectedAsync"
+                             OnMessageSelected="@HandleMessageSelectedAsync"
+                             OnSelectionChanged="@HandleSelectionChangedAsync"
+                             OnRefresh="@RefreshMessagesAsync"
+                             OnMessagesDeleted="@HandleMessagesDeletedAsync"
+                             MessageOperationsService="@MessageOperationsService"
+                             AutoRefreshEnabled="@AutoRefreshEnabled"
+                             @bind-RefreshIntervalSeconds="@RefreshIntervalSeconds"
+                             IsLoading="@IsLoadingMessages"
+                             IsRefreshing="@IsRefreshing" />
+            }
         </div>
     </div>
 

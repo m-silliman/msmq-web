@@ -139,6 +139,26 @@ public class QueueInfo
     public bool Authenticate { get; set; }
 
     /// <summary>
+    /// Gets or sets the queue type ID (GUID)
+    /// </summary>
+    public Guid? TypeId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the privacy level (None, Optional, Body)
+    /// </summary>
+    public int PrivacyLevel { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether journal is enabled
+    /// </summary>
+    public bool JournalEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum journal storage limit in KB (0 = unlimited)
+    /// </summary>
+    public long JournalQuota { get; set; }
+
+    /// <summary>
     /// Gets or sets the base priority for messages in this queue
     /// </summary>
     public int BasePriority { get; set; }
@@ -209,9 +229,12 @@ public class QueueInfo
             CanWrite = CanWrite,
             IsLocal = IsLocal,
             UseJournalQueue = UseJournalQueue,
-            // JournalPath = JournalPath,
             JournalMessageCount = JournalMessageCount,
             Authenticate = Authenticate,
+            TypeId = TypeId,
+            PrivacyLevel = PrivacyLevel,
+            JournalEnabled = JournalEnabled,
+            JournalQuota = JournalQuota,
             BasePriority = BasePriority,
             MaximumQueueSize = MaximumQueueSize,
             MaximumJournalSize = MaximumJournalSize,

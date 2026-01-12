@@ -159,9 +159,18 @@ public class HomeBase : ComponentBase, IAsyncDisposable
                 Messages.Clear();
             }
         }
+        else if (nodeData.ViewType == QueueViewType.Queue)
+        {
+            // For queue nodes (parent node), show queue properties
+            SelectedQueue = queueInfo;
+            CurrentViewType = QueueViewType.QueueProperties;
+            Messages.Clear();
+            SelectedMessage = null;
+            IsDetailDrawerOpen = false;
+        }
         else
         {
-            // For folder or queue nodes, just update state without loading messages
+            // For folder or other nodes, just update state without loading messages
             SelectedQueue = queueInfo;
             CurrentViewType = nodeData.ViewType;
             Messages.Clear();
