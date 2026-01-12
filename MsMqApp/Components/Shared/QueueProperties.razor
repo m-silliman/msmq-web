@@ -39,47 +39,131 @@
                 {
                     <div class="tab-pane active">
                         <div class="properties-form">
+                            @if (!string.IsNullOrEmpty(ValidationError))
+                            {
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    @ValidationError
+                                    <button type="button" class="btn-close" @onclick="() => ValidationError = null"></button>
+                                </div>
+                            }
+
+                            <!-- Edit Mode Toggle -->
+                            @if (!IsEditMode)
+                            {
+                                <div class="mb-3">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="EnterEditMode">
+                                        <i class="bi bi-pencil me-1"></i>
+                                        Edit Properties
+                                    </button>
+                                </div>
+                            }
+
                             <!-- Label -->
                             <div class="form-group row">
-                                <label class="col-sm-3 col-form-label">Label:</label>
+                                <label class="col-sm-3 col-form-label">
+                                    Label:
+                                    @if (IsDirty && EditLabel != Queue?.Label)
+                                    {
+                                        <span class="text-danger">*</span>
+                                    }
+                                </label>
                                 <div class="col-sm-9">
-                                    <input type="text" class="form-control" value="@Queue.Label" readonly />
+                                    <input type="text" 
+                                           class="form-control @(FieldErrors.ContainsKey("Label") ? "is-invalid" : "")" 
+                                           @bind="EditLabel" 
+                                           @bind:event="oninput"
+                                           @onchange="OnFieldChanged"
+                                           readonly="@(!IsEditMode)" />
+                                    @if (FieldErrors.ContainsKey("Label"))
+                                    {
+                                        <div class="invalid-feedback d-block">@FieldErrors["Label"]</div>
+                                    }
                                 </div>
                             </div>
 
                             <!-- Type ID -->
                             <div class="form-group row">
-                                <label class="col-sm-3 col-form-label">Type ID:</label>
+                                <label class="col-sm-3 col-form-label">
+                                    Type ID:
+                                    @if (IsDirty && EditTypeId != (Queue?.TypeId?.ToString().ToUpper() ?? "00000000-0000-0000-0000-000000000000"))
+                                    {
+                                        <span class="text-danger">*</span>
+                                    }
+                                </label>
                                 <div class="col-sm-9">
-                                    <input type="text" class="form-control" value="@GetTypeIdDisplay()" readonly />
+                                    <input type="text" 
+                                           class="form-control @(FieldErrors.ContainsKey("TypeId") ? "is-invalid" : "")" 
+                                           @bind="EditTypeId"
+                                           @bind:event="oninput"
+                                           @onchange="OnFieldChanged"
+                                           placeholder="00000000-0000-0000-0000-000000000000"
+                                           readonly="@(!IsEditMode)" />
+                                    @if (FieldErrors.ContainsKey("TypeId"))
+                                    {
+                                        <div class="invalid-feedback d-block">@FieldErrors["TypeId"]</div>
+                                    }
                                 </div>
                             </div>
 
                             <!-- Checkboxes -->
                             <div class="form-group row">
                                 <div class="col-sm-9 offset-sm-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" 
-                                               checked="@HasMessageStorageLimit()" 
-                                               disabled />
-                                        <label class="form-check-label">
-                                            Limit message storage to (KB): @GetMaxQueueSizeDisplay()
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="limitMessageStorage"
+                                               @bind="EditLimitMessageStorage"
+                                               @bind:after="OnFieldChanged"
+                                               disabled="@(!IsEditMode)" />
+                                        <label class="form-check-label" for="limitMessageStorage">
+                                            Limit message storage to (KB):
+                                            @if (IsDirty && EditLimitMessageStorage != (Queue?.MaximumQueueSize > 0))
+                                            {
+                                                <span class="text-danger">*</span>
+                                            }
                                         </label>
                                     </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" 
-                                               checked="@Queue.Authenticate" 
-                                               disabled />
-                                        <label class="form-check-label">
+                                    @if (EditLimitMessageStorage)
+                                    {
+                                        <div class="ms-4 mb-2">
+                                            <input type="number" 
+                                                   class="form-control form-control-sm @(FieldErrors.ContainsKey("MaximumQueueSize") ? "is-invalid" : "")" 
+                                                   style="max-width: 200px;"
+                                                   @bind="EditMaximumQueueSize"
+                                                   @bind:after="OnFieldChanged"
+                                                   min="1"
+                                                   readonly="@(!IsEditMode)" />
+                                            @if (FieldErrors.ContainsKey("MaximumQueueSize"))
+                                            {
+                                                <div class="invalid-feedback d-block">@FieldErrors["MaximumQueueSize"]</div>
+                                            }
+                                        </div>
+                                    }
+
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="authenticated"
+                                               @bind="EditAuthenticate"
+                                               @bind:after="OnFieldChanged"
+                                               disabled="@(!IsEditMode)" />
+                                        <label class="form-check-label" for="authenticated">
                                             Authenticated
+                                            @if (IsDirty && EditAuthenticate != Queue?.Authenticate)
+                                            {
+                                                <span class="text-danger">*</span>
+                                            }
                                         </label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" 
-                                               checked="@Queue.IsTransactional" 
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               checked="@Queue?.IsTransactional" 
                                                disabled />
                                         <label class="form-check-label">
                                             Transactional queue
+                                            <small class="text-muted">(cannot be changed)</small>
                                         </label>
                                     </div>
                                 </div>
@@ -87,10 +171,22 @@
 
                             <!-- Privacy Level -->
                             <div class="form-group row">
-                                <label class="col-sm-3 col-form-label">Privacy level:</label>
+                                <label class="col-sm-3 col-form-label" for="privacyLevel">
+                                    Privacy level:
+                                    @if (IsDirty && EditPrivacyLevel != Queue?.PrivacyLevel)
+                                    {
+                                        <span class="text-danger">*</span>
+                                    }
+                                </label>
                                 <div class="col-sm-9">
-                                    <select class="form-select" disabled>
-                                        <option selected>@GetPrivacyLevelDisplay()</option>
+                                    <select class="form-select" 
+                                            id="privacyLevel"
+                                            @bind="EditPrivacyLevel"
+                                            @bind:after="OnFieldChanged"
+                                            disabled="@(!IsEditMode)">
+                                        <option value="0">None</option>
+                                        <option value="1">Optional</option>
+                                        <option value="2">Body</option>
                                     </select>
                                 </div>
                             </div>
@@ -100,28 +196,89 @@
                                 <h6>Journal</h6>
                                 <div class="form-group row">
                                     <div class="col-sm-9 offset-sm-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" 
-                                                   checked="@Queue.UseJournalQueue" 
-                                                   disabled />
-                                            <label class="form-check-label">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="journalEnabled"
+                                                   @bind="EditJournalEnabled"
+                                                   @bind:after="OnFieldChanged"
+                                                   disabled="@(!IsEditMode)" />
+                                            <label class="form-check-label" for="journalEnabled">
                                                 Enabled
+                                                @if (IsDirty && EditJournalEnabled != Queue?.UseJournalQueue)
+                                                {
+                                                    <span class="text-danger">*</span>
+                                                }
                                             </label>
                                         </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" 
-                                                   checked="@HasJournalStorageLimit()" 
-                                                   disabled />
-                                            <label class="form-check-label">
-                                                Limit journal storage to (KB): @GetMaxJournalSizeDisplay()
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="limitJournalStorage"
+                                                   @bind="EditLimitJournalStorage"
+                                                   @bind:after="OnFieldChanged"
+                                                   disabled="@(!IsEditMode)" />
+                                            <label class="form-check-label" for="limitJournalStorage">
+                                                Limit journal storage to (KB):
+                                                @if (IsDirty && EditLimitJournalStorage != (Queue?.MaximumJournalSize > 0))
+                                                {
+                                                    <span class="text-danger">*</span>
+                                                }
                                             </label>
                                         </div>
+                                        @if (EditLimitJournalStorage)
+                                        {
+                                            <div class="ms-4 mb-2">
+                                                <input type="number" 
+                                                       class="form-control form-control-sm @(FieldErrors.ContainsKey("MaximumJournalSize") ? "is-invalid" : "")" 
+                                                       style="max-width: 200px;"
+                                                       @bind="EditMaximumJournalSize"
+                                                       @bind:after="OnFieldChanged"
+                                                       min="1"
+                                                       readonly="@(!IsEditMode)" />
+                                                @if (FieldErrors.ContainsKey("MaximumJournalSize"))
+                                                {
+                                                    <div class="invalid-feedback d-block">@FieldErrors["MaximumJournalSize"]</div>
+                                                }
+                                            </div>
+                                        }
                                     </div>
                                 </div>
                             </div>
 
+                            <!-- Action Buttons -->
+                            @if (IsEditMode)
+                            {
+                                <div class="action-buttons">
+                                    <button class="btn btn-primary" 
+                                            @onclick="OnSaveAsync"
+                                            disabled="@(!IsDirty || IsSaving)">
+                                        @if (IsSaving)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-check-lg me-1"></i>
+                                        }
+                                        Save
+                                    </button>
+                                    <button class="btn btn-secondary" 
+                                            @onclick="OnCancel"
+                                            disabled="@IsSaving">
+                                        <i class="bi bi-x-lg me-1"></i>
+                                        Cancel
+                                    </button>
+                                    <button class="btn btn-outline-secondary" 
+                                            @onclick="OnApply"
+                                            disabled="@(!IsDirty || IsSaving)">
+                                        Apply
+                                    </button>
+                                </div>
+                            }
+
                             <!-- Warning Message -->
-                            @if (!Queue.Authenticate)
+                            @if (!EditAuthenticate)
                             {
                                 <div class="alert alert-warning d-flex align-items-center mt-3" role="alert">
                                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
