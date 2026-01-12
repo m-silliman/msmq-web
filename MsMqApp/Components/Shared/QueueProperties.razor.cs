@@ -12,8 +12,6 @@ public class QueuePropertiesBase : ComponentBase
     [Inject]
     protected IQueueManagementService QueueManagementService { get; set; } = default!;
 
-    protected string ActiveTab { get; set; } = "general";
-
     // Edit mode state
     protected bool IsEditMode { get; set; } = false;
     protected bool IsDirty { get; set; } = false;
@@ -64,12 +62,6 @@ public class QueuePropertiesBase : ComponentBase
         IsDirty = false;
         ValidationError = null;
         FieldErrors.Clear();
-    }
-
-    protected void SetActiveTab(string tab)
-    {
-        ActiveTab = tab;
-        StateHasChanged();
     }
 
     protected void EnterEditMode()

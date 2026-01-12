@@ -253,17 +253,23 @@
     padding: 0.5rem;
     display: flex;
     align-items: center;
-    cursor: default;
+    cursor: pointer;
     border-radius: 0.25rem;
+    transition: background-color 0.15s ease;
 }
 
 .user-item:hover {
-    background-color: var(--bs-light);
+    background-color: var(--bs-secondary-bg);
 }
 
-.user-item:first-child {
-    background-color: var(--bs-primary-bg-subtle);
-    font-weight: 500;
+.user-item.selected {
+    background-color: var(--bs-primary);
+    color: white;
+}
+
+.principal-icon {
+    margin-right: 0.5rem;
+    font-size: 1.125rem;
 }
 
 .security-buttons {
@@ -273,20 +279,38 @@
 
 .permissions-table {
     margin-top: 0.75rem;
+    margin-bottom: 0;
 }
 
 .permissions-table th {
     font-weight: 600;
     background-color: var(--bs-secondary-bg);
     color: var(--bs-body-color);
+    padding: 0.5rem;
+    font-size: 0.875rem;
 }
 
 .permissions-table td {
     vertical-align: middle;
+    padding: 0.5rem;
+    font-size: 0.875rem;
 }
 
-.permissions-table input[type="checkbox"] {
-    cursor: default;
+.permissions-table td:first-child {
+    font-weight: 500;
+}
+
+.permissions-table input[type="checkbox"]:not(:disabled) {
+    cursor: pointer;
+}
+
+.permissions-table input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+}
+
+/* Add principal input styling */
+.input-group {
+    max-width: 500px;
 }
 
 .no-queue-selected {

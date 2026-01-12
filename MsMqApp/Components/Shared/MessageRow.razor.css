@@ -162,6 +162,15 @@
     }
 }
 
+/* Light Mode - Ensure badge text is white for contrast */
+[data-bs-theme="light"] .message-cell-priority .badge.bg-secondary,
+[data-bs-theme="light"] .message-cell-priority .badge.bg-primary,
+[data-bs-theme="light"] .message-cell-priority .badge.bg-info,
+[data-bs-theme="light"] .message-cell-priority .badge.bg-success,
+[data-bs-theme="light"] .message-cell-priority .badge.bg-danger {
+    color: #ffffff !important;
+}
+
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
     .message-row {

@@ -17,27 +17,16 @@
         <div class="properties-tabs">
             <ul class="nav nav-tabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link @(ActiveTab == "general" ? "active" : "")"
+                    <button class="nav-link active"
                             type="button"
-                            role="tab"
-                            @onclick='() => SetActiveTab("general")'>
+                            role="tab">
                         General
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link @(ActiveTab == "security" ? "active" : "")"
-                            type="button"
-                            role="tab"
-                            @onclick='() => SetActiveTab("security")'>
-                        Security
                     </button>
                 </li>
             </ul>
 
             <div class="tab-content">
-                @if (ActiveTab == "general")
-                {
-                    <div class="tab-pane active">
+                <div class="tab-pane active">
                         <div class="properties-form">
                             @if (!string.IsNullOrEmpty(SuccessMessage))
                             {
@@ -280,94 +269,14 @@
                                 <div class="alert alert-warning d-flex align-items-center mt-3" role="alert">
                                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
                                     <div>
-                                        Queue is unauthenticated. Message senders can bypass the Access Control settings specified in the Security tab.
+                                        Queue is unauthenticated. Message senders can bypass the Access Control settings.
                                     </div>
                                 </div>
                             }
                         </div>
                     </div>
-                }
-                else if (ActiveTab == "security")
-                {
-                    <div class="tab-pane active">
-                        <div class="properties-form">
-                            <div class="security-info">
-                                <h6>Group or user names:</h6>
-                                <div class="user-list">
-                                    <div class="user-item">
-                                        <i class="bi bi-people-fill me-2"></i>
-                                        <span>Everyone</span>
-                                    </div>
-                                    <div class="user-item">
-                                        <i class="bi bi-person-fill me-2"></i>
-                                        <span>@GetComputerName()</span>
-                                    </div>
-                                    <div class="user-item">
-                                        <i class="bi bi-person-fill me-2"></i>
-                                        <span>@GetCurrentUser()</span>
-                                    </div>
-                                </div>
-
-                                <div class="security-buttons mt-2">
-                                    <button class="btn btn-sm btn-outline-secondary" disabled>Add...</button>
-                                    <button class="btn btn-sm btn-outline-secondary" disabled>Remove</button>
-                                </div>
-
-                                <h6 class="mt-4">Permissions for Everyone</h6>
-                                <table class="table table-sm permissions-table">
-                                    <thead>
-                                        <tr>
-                                            <th></th>
-                                            <th>Allow</th>
-                                            <th>Deny</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>Full Control</td>
-                                            <td><input type="checkbox" disabled /></td>
-                                            <td><input type="checkbox" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Delete</td>
-                                            <td><input type="checkbox" disabled /></td>
-                                            <td><input type="checkbox" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Receive Message</td>
-                                            <td><input type="checkbox" disabled /></td>
-                                            <td><input type="checkbox" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Peek Message</td>
-                                            <td><input type="checkbox" disabled /></td>
-                                            <td><input type="checkbox" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Receive Journal Message</td>
-                                            <td><input type="checkbox" disabled /></td>
-                                            <td><input type="checkbox" disabled /></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-
-                                <div class="mt-3">
-                                    <p class="text-muted small">
-                                        For special permissions or advanced settings, click Advanced.
-                                    </p>
-                                    <button class="btn btn-sm btn-outline-secondary" disabled>Advanced</button>
-                                </div>
-
-                                <div class="alert alert-info mt-3" role="alert">
-                                    <i class="bi bi-info-circle me-2"></i>
-                                    Security management is read-only in this version. Use Computer Management to modify permissions.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
+                </div>
             </div>
-        </div>
     }
     else
     {

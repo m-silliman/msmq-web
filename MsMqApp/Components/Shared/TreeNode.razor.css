@@ -110,6 +110,11 @@
     display: block;
 }
 
+/* Light Mode - Ensure badge text is white for contrast */
+[data-bs-theme="light"] .tree-node-badge {
+    color: #ffffff !important;
+}
+
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
     .tree-node-content,
