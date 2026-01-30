@@ -1,0 +1,109 @@
+/* Queue List Summary Component Styles */
+
+.queue-list-summary {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--app-bg-primary);
+}
+
+.summary-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background-color: var(--app-bg-secondary);
+    border-bottom: 2px solid var(--app-border-color);
+}
+
+.summary-title {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--app-text-primary);
+    display: flex;
+    align-items: center;
+}
+
+.summary-stats {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.summary-table-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.queue-summary-table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.queue-summary-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: var(--app-bg-secondary);
+    border-bottom: 2px solid var(--app-border-color);
+    color: var(--app-text-primary);
+    font-weight: 600;
+    padding: 0.75rem;
+    z-index: 10;
+}
+
+.queue-summary-table tbody td {
+    padding: 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--app-border-color);
+}
+
+.queue-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.queue-row:hover {
+    background-color: var(--app-bg-hover);
+}
+
+.queue-row:active {
+    background-color: var(--app-bg-active);
+}
+
+.queue-name {
+    font-weight: 500;
+    color: var(--app-text-primary);
+}
+
+.queue-name i {
+    font-size: 0.875rem;
+}
+
+.no-queues-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+    flex: 1;
+}
+
+.no-queues-message i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.no-queues-message p {
+    font-size: 1rem;
+}
+
+/* Badge styling in table */
+.queue-summary-table .badge {
+    min-width: 3rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.35rem 0.65rem;
+}

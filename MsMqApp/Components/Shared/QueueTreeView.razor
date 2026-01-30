@@ -13,7 +13,7 @@
                             disabled="@(Connection.IsRefreshing || IsRefreshing)"
                             title="Purge all messages from selected queue">
                         <i class="bi bi-trash" aria-hidden="true"></i>
-                        <span class="ms-1"></span>
+                        <span class="ms-1">Purge</span>
                     </button>
                 }
 
@@ -24,7 +24,7 @@
                             disabled="@(Connection.IsRefreshing || IsRefreshing)"
                             title="Send a message to selected queue">
                         <i class="bi bi-envelope-plus-fill" aria-hidden="true"></i>
-                        <span class="ms-1"></span>
+                        <span class="ms-1">Send</span>
                     </button>
                 }
 
@@ -35,34 +35,31 @@
                             disabled="@(Connection.IsRefreshing || IsRefreshing)"
                             title="Refresh queue list">
                         <i class="bi @GetRefreshIconClass()" aria-hidden="true"></i>
-                        @if (ShowRefreshLabel)
-                        {
                             <span class="ms-1">Refresh</span>
-                        }
                     </button>
                 }
             </div>
-
-            <div class="queue-tree-filter">
-                <div class="filter-input-wrapper">
-                    <i class="bi bi-search filter-icon" aria-hidden="true"></i>
-                    <input type="text"
-                           class="form-control form-control-sm filter-input"
-                           placeholder="Filter queues..."
-                           value="@FilterText"
-                           @oninput="OnFilterInputAsync"
-                           disabled="@(Connection.IsRefreshing || IsRefreshing)"
-                           aria-label="Filter queues by name" />
-                    @if (!string.IsNullOrWhiteSpace(FilterText))
-                    {
-                        <button class="btn btn-sm filter-clear-button"
-                                @onclick="OnClearFilterAsync"
-                                title="Clear filter"
-                                aria-label="Clear filter">
-                            <i class="bi bi-x" aria-hidden="true"></i>
-                        </button>
-                    }
-                </div>
+        </div>
+        
+        <div class="queue-tree-filter">
+            <div class="filter-input-wrapper">
+                <i class="bi bi-search filter-icon" aria-hidden="true"></i>
+                <input type="text"
+                       class="form-control form-control-sm filter-input"
+                       placeholder="Filter queues..."
+                       value="@FilterText"
+                       @oninput="OnFilterInputAsync"
+                       disabled="@(Connection.IsRefreshing || IsRefreshing)"
+                       aria-label="Filter queues by name" />
+                @if (!string.IsNullOrWhiteSpace(FilterText))
+                {
+                    <button class="btn btn-sm filter-clear-button"
+                            @onclick="OnClearFilterAsync"
+                            title="Clear filter"
+                            aria-label="Clear filter">
+                        <i class="bi bi-x" aria-hidden="true"></i>
+                    </button>
+                }
             </div>
         </div>
 

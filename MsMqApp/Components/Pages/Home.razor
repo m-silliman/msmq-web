@@ -41,6 +41,7 @@
                            SelectedQueue="@SelectedQueue"
                            CurrentViewType="@CurrentViewType"
                            OnNodeSelected="@HandleNodeSelectedAsync"
+                           OnFilterChanged="@HandleFilterChangedAsync"
                            OnRefreshRequested="@RefreshQueuesAsync"
                            OnPurgeRequested="@HandlePurgeRequestedAsync"
                            OnSendMessageRequested="@OpenSendMessageDialogAsync"
@@ -58,7 +59,13 @@
 
         <!-- Right Panel: Message List or Queue Properties -->
         <div class="right-panel" style="@GetRightPanelStyle()">
-            @if (CurrentViewType == QueueViewType.QueueProperties)
+            @if (CurrentViewType == QueueViewType.Folder)
+            {
+                <QueueListSummary Title="@(SelectedFolderNode?.Text ?? "Queue Summary")"
+                                  Queues="@FilteredQueues"
+                                  OnQueueSelected="@HandleSummaryQueueSelectedAsync" />
+            }
+            else if (CurrentViewType == QueueViewType.QueueProperties)
             {
                 <QueueProperties Queue="@SelectedQueue" />
             }

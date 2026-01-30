@@ -52,6 +52,13 @@ public class QueueTreeViewBase : ComponentBase
     public EventCallback<string> OnSendMessageRequested { get; set; }
 
     /// <summary>
+    /// Gets or sets the callback invoked when the filter changes.
+    /// Passes the filtered tree root so parent can update derived views.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TreeNodeData?> OnFilterChanged { get; set; }
+
+    /// <summary>
     /// Gets or sets whether to show the refresh button.
     /// Default is true.
     /// </summary>
@@ -439,24 +446,36 @@ public class QueueTreeViewBase : ComponentBase
     /// </summary>
     /// <param name="e">The change event arguments.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    protected Task OnFilterInputAsync(ChangeEventArgs e)
+    protected async Task OnFilterInputAsync(ChangeEventArgs e)
     {
         FilterText = e.Value?.ToString() ?? string.Empty;
         ApplyFilter();
+        
+        // Notify parent that filter has changed
+        if (OnFilterChanged.HasDelegate)
+        {
+            await OnFilterChanged.InvokeAsync(FilteredTreeRoot);
+        }
+        
         StateHasChanged();
-        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Handles clearing the filter.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
-    protected Task OnClearFilterAsync()
+    protected async Task OnClearFilterAsync()
     {
         FilterText = string.Empty;
         ApplyFilter();
+        
+        // Notify parent that filter has been cleared
+        if (OnFilterChanged.HasDelegate)
+        {
+            await OnFilterChanged.InvokeAsync(FilteredTreeRoot);
+        }
+        
         StateHasChanged();
-        return Task.CompletedTask;
     }
 
     /// <summary>

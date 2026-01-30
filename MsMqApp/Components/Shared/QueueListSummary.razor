@@ -1,0 +1,93 @@
+@namespace MsMqApp.Components.Shared
+@using MsMqApp.Models.Domain
+
+<div class="queue-list-summary">
+    <div class="summary-header">
+        <h5 class="summary-title">
+            <i class="bi bi-list-ul me-2"></i>
+            @Title
+        </h5>
+        @if (Queues.Any())
+        {
+            <div class="summary-stats">
+                <span class="badge bg-secondary">@Queues.Count queue@(Queues.Count != 1 ? "s" : "")</span>
+            </div>
+        }
+    </div>
+
+    @if (!Queues.Any())
+    {
+        <div class="no-queues-message">
+            <i class="bi bi-inbox text-muted" aria-hidden="true"></i>
+            <p class="text-muted mb-0">No queues to display</p>
+        </div>
+    }
+    else
+    {
+        <div class="summary-table-container">
+            <table class="table table-sm table-hover queue-summary-table">
+                <thead>
+                    <tr>
+                        <th>Message Queue Name</th>
+                        <th class="text-end">Queue Count</th>
+                        <th class="text-end">Journal Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var queue in Queues)
+                    {
+                        <tr class="queue-row" 
+                            @onclick="() => OnQueueClick(queue)"
+                            role="button"
+                            tabindex="0"
+                            title="Click to view queue details">
+                            <td class="queue-name">
+                                <i class="bi bi-inbox me-2 text-muted"></i>
+                                @queue.Name
+                            </td>
+                            <td class="text-end">
+                                @if (queue.MessageCount > 0)
+                                {
+                                    <span class="badge bg-primary">@queue.MessageCount.ToString("N0")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">0</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (queue.JournalMessageCount > 0)
+                                {
+                                    <span class="badge bg-info">@queue.JournalMessageCount.ToString("N0")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">0</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "Queue Summary";
+
+    [Parameter]
+    public List<QueueInfo> Queues { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<QueueInfo> OnQueueSelected { get; set; }
+
+    private async Task OnQueueClick(QueueInfo queue)
+    {
+        if (OnQueueSelected.HasDelegate)
+        {
+            await OnQueueSelected.InvokeAsync(queue);
+        }
+    }
+}

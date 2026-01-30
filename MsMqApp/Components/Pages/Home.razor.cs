@@ -43,6 +43,8 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected QueueMessage? SelectedMessage { get; set; }
     protected List<QueueMessage> Messages { get; set; } = new();
     protected List<QueueMessage> SelectedMessages { get; set; } = new();
+    protected TreeNodeData? SelectedFolderNode { get; set; }
+    protected List<QueueInfo> FilteredQueues { get; set; } = new();
 
     // UI State
     protected bool IsDetailDrawerOpen { get; set; }
@@ -168,9 +170,22 @@ public class HomeBase : ComponentBase, IAsyncDisposable
             SelectedMessage = null;
             IsDetailDrawerOpen = false;
         }
+        else if (nodeData.ViewType == QueueViewType.Folder)
+        {
+            // For folder nodes (e.g., "Private Queues"), show queue list summary
+            SelectedQueue = null;
+            CurrentViewType = QueueViewType.Folder;
+            SelectedFolderNode = nodeData;
+            Messages.Clear();
+            SelectedMessage = null;
+            IsDetailDrawerOpen = false;
+            
+            // Extract filtered queues from the folder node's children
+            FilteredQueues = ExtractQueuesFromNode(nodeData);
+        }
         else
         {
-            // For folder or other nodes, just update state without loading messages
+            // For other nodes, just update state without loading messages
             SelectedQueue = queueInfo;
             CurrentViewType = nodeData.ViewType;
             Messages.Clear();
@@ -179,6 +194,89 @@ public class HomeBase : ComponentBase, IAsyncDisposable
         }
 
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Extracts all QueueInfo objects from a tree node and its children.
+    /// </summary>
+    private List<QueueInfo> ExtractQueuesFromNode(TreeNodeData node)
+    {
+        var queues = new List<QueueInfo>();
+        
+        // Check if this node has queue info
+        if (node.Data is QueueInfo queueInfo)
+        {
+            queues.Add(queueInfo);
+        }
+        
+        // Recursively extract from children
+        foreach (var child in node.Children)
+        {
+            queues.AddRange(ExtractQueuesFromNode(child));
+        }
+        
+        // Remove duplicates based on queue path (same queue appears in parent and child nodes)
+        return queues.DistinctBy(q => q.Path).ToList();
+    }
+
+    /// <summary>
+    /// Handles queue selection from the queue list summary.
+    /// </summary>
+    protected async Task HandleSummaryQueueSelectedAsync(QueueInfo queue)
+    {
+        SelectedQueue = queue;
+        CurrentViewType = QueueViewType.QueueMessages;
+        SelectedMessage = null;
+        IsDetailDrawerOpen = false;
+        
+        // Use FormatName if available, otherwise fall back to Path
+        var queuePath = !string.IsNullOrEmpty(queue.FormatName) ? queue.FormatName : queue.Path;
+        await LoadMessagesAsync(queuePath, QueueViewType.QueueMessages);
+        
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Handles filter changes from the queue tree view.
+    /// Updates the filtered queues list if a folder is currently selected.
+    /// </summary>
+    protected Task HandleFilterChangedAsync(TreeNodeData? filteredRoot)
+    {
+        // If a folder is currently selected, update the filtered queues
+        if (CurrentViewType == QueueViewType.Folder && SelectedFolderNode != null && filteredRoot != null)
+        {
+            // Find the corresponding folder node in the filtered tree
+            var folderNodeInFilteredTree = FindNodeById(filteredRoot, SelectedFolderNode.Id);
+            if (folderNodeInFilteredTree != null)
+            {
+                FilteredQueues = ExtractQueuesFromNode(folderNodeInFilteredTree);
+                StateHasChanged();
+            }
+        }
+        
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Finds a node by ID in the tree recursively.
+    /// </summary>
+    private TreeNodeData? FindNodeById(TreeNodeData node, string id)
+    {
+        if (node.Id == id)
+        {
+            return node;
+        }
+        
+        foreach (var child in node.Children)
+        {
+            var found = FindNodeById(child, id);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+        
+        return null;
     }
 
     /// <summary>
