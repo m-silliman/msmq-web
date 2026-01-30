@@ -113,6 +113,16 @@ public class QueueTreeViewBase : ComponentBase
     /// </summary>
     protected TreeNodeData? TreeRoot { get; private set; }
 
+    /// <summary>
+    /// Gets the filtered tree root based on current filter text.
+    /// </summary>
+    protected TreeNodeData? FilteredTreeRoot { get; private set; }
+
+    /// <summary>
+    /// Gets or sets the current filter text for queue names.
+    /// </summary>
+    protected string FilterText { get; set; } = string.Empty;
+
     /// <inheritdoc/>
     protected override void OnParametersSet()
     {
@@ -165,16 +175,21 @@ public class QueueTreeViewBase : ComponentBase
                         UpdateSelectionState(TreeRoot, targetSelectedId);
                     }
                 }
+
+                // Apply filter if present
+                ApplyFilter();
             }
             catch (Exception ex)
             {
                 ErrorMessage = $"Error building queue tree: {ex.Message}";
                 TreeRoot = null;
+                FilteredTreeRoot = null;
             }
         }
         else
         {
             TreeRoot = null;
+            FilteredTreeRoot = null;
             ErrorMessage = null;
         }
     }
@@ -406,6 +421,10 @@ public class QueueTreeViewBase : ComponentBase
             {
                 // Update badge counts without rebuilding entire tree
                 QueueTreeBuilder.UpdateBadgeCounts(TreeRoot, Connection);
+                
+                // Reapply filter to update filtered view
+                ApplyFilter();
+                
                 StateHasChanged();
             }
             catch (Exception ex)
@@ -413,6 +432,139 @@ public class QueueTreeViewBase : ComponentBase
                 ErrorMessage = $"Error refreshing tree: {ex.Message}";
             }
         }
+    }
+
+    /// <summary>
+    /// Handles filter input changes.
+    /// </summary>
+    /// <param name="e">The change event arguments.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    protected Task OnFilterInputAsync(ChangeEventArgs e)
+    {
+        FilterText = e.Value?.ToString() ?? string.Empty;
+        ApplyFilter();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Handles clearing the filter.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    protected Task OnClearFilterAsync()
+    {
+        FilterText = string.Empty;
+        ApplyFilter();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Applies the current filter to the tree.
+    /// </summary>
+    private void ApplyFilter()
+    {
+        if (TreeRoot == null)
+        {
+            FilteredTreeRoot = null;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(FilterText))
+        {
+            // No filter - show entire tree
+            FilteredTreeRoot = TreeRoot;
+        }
+        else
+        {
+            // Apply filter and create filtered tree
+            FilteredTreeRoot = FilterTreeNode(TreeRoot);
+        }
+    }
+
+    /// <summary>
+    /// Recursively filters a tree node and its children based on the filter text.
+    /// </summary>
+    /// <param name="node">The node to filter.</param>
+    /// <returns>A filtered copy of the node, or null if it doesn't match the filter.</returns>
+    private TreeNodeData? FilterTreeNode(TreeNodeData node)
+    {
+        // Check if this is a queue node (has QueueInfo as Data)
+        var isQueueNode = node.Data is QueueInfo;
+        
+        // Only apply filter matching to queue nodes (leaf queue names)
+        var nodeMatches = isQueueNode && node.Text.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+
+        // If this queue node matches, include it with ALL its children (Queue Messages, Journal Messages)
+        if (nodeMatches)
+        {
+            // Clone the entire node with all children intact, preserving expansion state
+            var filteredNode = new TreeNodeData
+            {
+                Id = node.Id,
+                Text = node.Text,
+                IconClass = node.IconClass,
+                Data = node.Data,
+                IsExpanded = node.IsExpanded, // Preserve original expansion state
+                IsSelected = node.IsSelected,
+                Level = node.Level,
+                ViewType = node.ViewType,
+                BadgeCount = node.BadgeCount,
+                SecondaryBadgeCount = node.SecondaryBadgeCount,
+                HasChildren = node.HasChildren,
+                Children = node.Children.Select(child => new TreeNodeData
+                {
+                    Id = child.Id,
+                    Text = child.Text,
+                    IconClass = child.IconClass,
+                    Data = child.Data,
+                    IsExpanded = child.IsExpanded,
+                    IsSelected = child.IsSelected,
+                    Level = child.Level,
+                    ViewType = child.ViewType,
+                    BadgeCount = child.BadgeCount,
+                    SecondaryBadgeCount = child.SecondaryBadgeCount,
+                    HasChildren = child.HasChildren,
+                    Children = child.Children.ToList()
+                }).ToList()
+            };
+
+            return filteredNode;
+        }
+
+        // For non-queue nodes (categories, etc.), recursively filter children
+        if (!isQueueNode)
+        {
+            var filteredChildren = node.Children
+                .Select(child => FilterTreeNode(child))
+                .Where(child => child != null)
+                .Cast<TreeNodeData>()
+                .ToList();
+
+            // Include this parent node if any of its children match
+            if (filteredChildren.Any())
+            {
+                var filteredNode = new TreeNodeData
+                {
+                    Id = node.Id,
+                    Text = node.Text,
+                    IconClass = node.IconClass,
+                    Data = node.Data,
+                    IsExpanded = true, // Expand parent categories to show matching queues
+                    IsSelected = node.IsSelected,
+                    Level = node.Level,
+                    ViewType = node.ViewType,
+                    BadgeCount = node.BadgeCount,
+                    SecondaryBadgeCount = node.SecondaryBadgeCount,
+                    HasChildren = filteredChildren.Any(),
+                    Children = filteredChildren
+                };
+
+                return filteredNode;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

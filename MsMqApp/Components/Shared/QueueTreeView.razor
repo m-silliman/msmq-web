@@ -5,42 +5,65 @@
     @if (Connection != null)
     {
         <div class="queue-tree-header">
+            <div class="queue-tree-buttons">
+                @if (ShouldShowPurgeButton())
+                {
+                    <button class="btn btn-sm btn-danger purge-button me-2"
+                            @onclick="OnPurgeClickedAsync"
+                            disabled="@(Connection.IsRefreshing || IsRefreshing)"
+                            title="Purge all messages from selected queue">
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                        <span class="ms-1">Purge</span>
+                    </button>
+                }
 
-            @if (ShouldShowPurgeButton())
-            {
-                <button class="btn btn-sm btn-danger purge-button me-2"
-                        @onclick="OnPurgeClickedAsync"
-                        disabled="@(Connection.IsRefreshing || IsRefreshing)"
-                        title="Purge all messages from selected queue">
-                    <i class="bi bi-trash" aria-hidden="true"></i>
-                    <span class="ms-1">Purge</span>
-                </button>
-            }
+                @if (ShouldShowSendMessageButton())
+                {
+                    <button class="btn btn-sm btn-primary send-message-button me-2"
+                            @onclick="OnSendMessageClickedAsync"
+                            disabled="@(Connection.IsRefreshing || IsRefreshing)"
+                            title="Send a message to selected queue">
+                        <i class="bi bi-envelope-plus-fill" aria-hidden="true"></i>
+                        <span class="ms-1">Send Message</span>
+                    </button>
+                }
 
-            @if (ShouldShowSendMessageButton())
-            {
-                <button class="btn btn-sm btn-primary send-message-button me-2"
-                        @onclick="OnSendMessageClickedAsync"
-                        disabled="@(Connection.IsRefreshing || IsRefreshing)"
-                        title="Send a message to selected queue">
-                    <i class="bi bi-envelope-plus-fill" aria-hidden="true"></i>
-                    <span class="ms-1">Send Message</span>
-                </button>
-            }
+                @if (ShowRefreshButton)
+                {
+                    <button class="btn btn-sm btn-outline-secondary refresh-button"
+                            @onclick="OnRefreshClickedAsync"
+                            disabled="@(Connection.IsRefreshing || IsRefreshing)"
+                            title="Refresh queue list">
+                        <i class="bi @GetRefreshIconClass()" aria-hidden="true"></i>
+                        @if (ShowRefreshLabel)
+                        {
+                            <span class="ms-1">Refresh</span>
+                        }
+                    </button>
+                }
+            </div>
 
-            @if (ShowRefreshButton)
-            {
-                <button class="btn btn-sm btn-outline-secondary refresh-button"
-                        @onclick="OnRefreshClickedAsync"
-                        disabled="@(Connection.IsRefreshing || IsRefreshing)"
-                        title="Refresh queue list">
-                    <i class="bi @GetRefreshIconClass()" aria-hidden="true"></i>
-                    @if (ShowRefreshLabel)
+            <div class="queue-tree-filter">
+                <div class="filter-input-wrapper">
+                    <i class="bi bi-search filter-icon" aria-hidden="true"></i>
+                    <input type="text"
+                           class="form-control form-control-sm filter-input"
+                           placeholder="Filter queues..."
+                           value="@FilterText"
+                           @oninput="OnFilterInputAsync"
+                           disabled="@(Connection.IsRefreshing || IsRefreshing)"
+                           aria-label="Filter queues by name" />
+                    @if (!string.IsNullOrWhiteSpace(FilterText))
                     {
-                        <span class="ms-1">Refresh</span>
+                        <button class="btn btn-sm filter-clear-button"
+                                @onclick="OnClearFilterAsync"
+                                title="Clear filter"
+                                aria-label="Clear filter">
+                            <i class="bi bi-x" aria-hidden="true"></i>
+                        </button>
                     }
-                </button>
-            }
+                </div>
+            </div>
         </div>
 
         <div class="queue-tree-content">
@@ -52,10 +75,10 @@
             }
             else if (TreeRoot != null)
             {
-                @if (TreeRoot.Children.Any())
+                @if (FilteredTreeRoot != null && FilteredTreeRoot.Children.Any())
                 {
                     <div class="tree-nodes" role="tree" aria-label="Queue tree">
-                        @foreach (var child in TreeRoot.Children)
+                        @foreach (var child in FilteredTreeRoot.Children)
                         {
                             <TreeNode @key="child.Id"
                                       NodeData="@child"
@@ -64,7 +87,14 @@
                         }
                     </div>
                 }
-                else
+                else if (!string.IsNullOrWhiteSpace(FilterText))
+                {
+                    <div class="no-queues-message">
+                        <i class="bi bi-search text-muted" aria-hidden="true"></i>
+                        <p class="text-muted mb-0">No queues match filter "@FilterText"</p>
+                    </div>
+                }
+                else if (!TreeRoot.Children.Any())
                 {
                     <div class="no-queues-message">
                         <i class="bi bi-inbox text-muted" aria-hidden="true"></i>
