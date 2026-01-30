@@ -477,8 +477,15 @@ public class QueueTreeViewBase : ComponentBase
         }
         else
         {
+            // Collect current expansion state from filtered tree before refiltering
+            var expansionState = new Dictionary<string, bool>();
+            if (FilteredTreeRoot != null)
+            {
+                CollectExpansionState(FilteredTreeRoot, expansionState);
+            }
+
             // Apply filter and create filtered tree
-            FilteredTreeRoot = FilterTreeNode(TreeRoot);
+            FilteredTreeRoot = FilterTreeNode(TreeRoot, expansionState);
         }
     }
 
@@ -486,14 +493,18 @@ public class QueueTreeViewBase : ComponentBase
     /// Recursively filters a tree node and its children based on the filter text.
     /// </summary>
     /// <param name="node">The node to filter.</param>
+    /// <param name="expansionState">Dictionary of node IDs to their expansion states.</param>
     /// <returns>A filtered copy of the node, or null if it doesn't match the filter.</returns>
-    private TreeNodeData? FilterTreeNode(TreeNodeData node)
+    private TreeNodeData? FilterTreeNode(TreeNodeData node, Dictionary<string, bool> expansionState)
     {
         // Check if this is a queue node (has QueueInfo as Data)
         var isQueueNode = node.Data is QueueInfo;
         
         // Only apply filter matching to queue nodes (leaf queue names)
         var nodeMatches = isQueueNode && node.Text.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+
+        // Determine expansion state: use user's current state if available, otherwise use original
+        var isExpanded = expansionState.ContainsKey(node.Id) ? expansionState[node.Id] : node.IsExpanded;
 
         // If this queue node matches, include it with ALL its children (Queue Messages, Journal Messages)
         if (nodeMatches)
@@ -505,27 +516,30 @@ public class QueueTreeViewBase : ComponentBase
                 Text = node.Text,
                 IconClass = node.IconClass,
                 Data = node.Data,
-                IsExpanded = node.IsExpanded, // Preserve original expansion state
+                IsExpanded = isExpanded, // Use preserved expansion state
                 IsSelected = node.IsSelected,
                 Level = node.Level,
                 ViewType = node.ViewType,
                 BadgeCount = node.BadgeCount,
                 SecondaryBadgeCount = node.SecondaryBadgeCount,
                 HasChildren = node.HasChildren,
-                Children = node.Children.Select(child => new TreeNodeData
-                {
-                    Id = child.Id,
-                    Text = child.Text,
-                    IconClass = child.IconClass,
-                    Data = child.Data,
-                    IsExpanded = child.IsExpanded,
-                    IsSelected = child.IsSelected,
-                    Level = child.Level,
-                    ViewType = child.ViewType,
-                    BadgeCount = child.BadgeCount,
-                    SecondaryBadgeCount = child.SecondaryBadgeCount,
-                    HasChildren = child.HasChildren,
-                    Children = child.Children.ToList()
+                Children = node.Children.Select(child => {
+                    var childExpanded = expansionState.ContainsKey(child.Id) ? expansionState[child.Id] : child.IsExpanded;
+                    return new TreeNodeData
+                    {
+                        Id = child.Id,
+                        Text = child.Text,
+                        IconClass = child.IconClass,
+                        Data = child.Data,
+                        IsExpanded = childExpanded, // Use preserved expansion state
+                        IsSelected = child.IsSelected,
+                        Level = child.Level,
+                        ViewType = child.ViewType,
+                        BadgeCount = child.BadgeCount,
+                        SecondaryBadgeCount = child.SecondaryBadgeCount,
+                        HasChildren = child.HasChildren,
+                        Children = child.Children.ToList()
+                    };
                 }).ToList()
             };
 
@@ -536,7 +550,7 @@ public class QueueTreeViewBase : ComponentBase
         if (!isQueueNode)
         {
             var filteredChildren = node.Children
-                .Select(child => FilterTreeNode(child))
+                .Select(child => FilterTreeNode(child, expansionState))
                 .Where(child => child != null)
                 .Cast<TreeNodeData>()
                 .ToList();
@@ -565,6 +579,21 @@ public class QueueTreeViewBase : ComponentBase
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Recursively collects expansion state from all nodes.
+    /// </summary>
+    /// <param name="node">The node to process.</param>
+    /// <param name="expansionState">Dictionary to store node IDs and their expansion states.</param>
+    private void CollectExpansionState(TreeNodeData node, Dictionary<string, bool> expansionState)
+    {
+        expansionState[node.Id] = node.IsExpanded;
+
+        foreach (var child in node.Children)
+        {
+            CollectExpansionState(child, expansionState);
+        }
     }
 
     /// <summary>
