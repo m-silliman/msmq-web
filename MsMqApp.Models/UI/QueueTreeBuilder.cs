@@ -120,10 +120,12 @@ public static class QueueTreeBuilder
     }
 
     /// <summary>
-    /// Creates a tree node for an individual queue with nested message/journal children.
+    /// Creates a tree node for an individual queue.
+    /// Outgoing queues are monitoring-only and do not include message browsing children.
     /// </summary>
     private static TreeNodeData CreateQueueNode(QueueInfo queue, int level)
     {
+        var isOutgoingQueue = queue.QueueType == QueueType.Outgoing;
         var supportsJournalChildren = queue.QueueType != QueueType.Outgoing && !queue.IsSystemQueue;
 
         var queueNode = new TreeNodeData
@@ -134,12 +136,17 @@ public static class QueueTreeBuilder
             BadgeCount = queue.MessageCount > 0 ? queue.MessageCount : null,
             SecondaryBadgeCount = supportsJournalChildren && queue.JournalMessageCount > 0 ? queue.JournalMessageCount : null,
             IsExpanded = false,
-            HasChildren = true,
+            HasChildren = !isOutgoingQueue,
             Level = level,
             Data = queue,
             ViewType = QueueViewType.Queue,
             Children = new List<TreeNodeData>()
         };
+
+        if (isOutgoingQueue)
+        {
+            return queueNode;
+        }
 
         // Add "Queue Messages" child node
         var messageQNode = new TreeNodeData

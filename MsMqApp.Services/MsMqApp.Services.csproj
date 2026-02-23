@@ -7,6 +7,7 @@
   <ItemGroup>
     <PackageReference Include="Experimental.System.Messaging" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+    <PackageReference Include="System.Management" Version="9.0.10" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -5,6 +5,7 @@ using MsMqApp.Models.Enums;
 using MsMqApp.Models.Results;
 using MsMqApp.Services.Helpers;
 using MsMqApp.Services.Interfaces;
+using System.Management;
 
 namespace MsMqApp.Services.Implementations;
 
@@ -53,6 +54,12 @@ public class MsmqService : IMsmqService
             {
                 var systemQueues = await DiscoverSystemQueuesAsync(computerName, cancellationToken);
                 foreach (var queue in systemQueues)
+                {
+                    TryAddQueue(queues, queue);
+                }
+
+                var outgoingQueues = await DiscoverOutgoingQueuesAsync(computerName, cancellationToken);
+                foreach (var queue in outgoingQueues)
                 {
                     TryAddQueue(queues, queue);
                 }
@@ -129,6 +136,195 @@ public class MsmqService : IMsmqService
     }
 
     /// <summary>
+    /// Discovers dynamic outgoing queues for a machine via WMI.
+    /// </summary>
+    private async Task<List<QueueInfo>> DiscoverOutgoingQueuesAsync(
+        string computerName,
+        CancellationToken cancellationToken)
+    {
+        var discovered = new List<QueueInfo>();
+        var pathMachineName = NormalizeComputerNameForPath(computerName);
+        var localMachineName = Environment.MachineName;
+
+        try
+        {
+            var scope = new ManagementScope($@"\\{pathMachineName}\root\MicrosoftMSMQ");
+            scope.Connect();
+
+            using var searcher = new ManagementObjectSearcher(scope, new ObjectQuery("SELECT FormatName, PathName FROM MSMQ_Queue"));
+            using var results = searcher.Get();
+
+            foreach (ManagementObject result in results)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                var formatName = result["FormatName"]?.ToString();
+                var pathName = result["PathName"]?.ToString();
+                var queueIdentifier = formatName ?? pathName;
+
+                if (!IsOutgoingQueueIdentifier(queueIdentifier))
+                {
+                    continue;
+                }
+
+                var messageCount = 0;
+                var countResult = await GetMessageCountAsync(queueIdentifier!, cancellationToken);
+                if (countResult.Success)
+                {
+                    messageCount = countResult.Data;
+                }
+
+                discovered.Add(new QueueInfo
+                {
+                    Id = $"outgoing-{Math.Abs(queueIdentifier!.GetHashCode())}",
+                    Name = queueIdentifier,
+                    Path = queueIdentifier,
+                    FormatName = queueIdentifier,
+                    ComputerName = computerName,
+                    QueueType = QueueType.Outgoing,
+                    MessageCount = messageCount,
+                    Label = "Outgoing Queue",
+                    CanRead = false,
+                    CanWrite = false,
+                    IsLocal = IsLocalComputer(computerName),
+                    IsAccessible = true
+                });
+            }
+
+            if (discovered.Count > 0)
+            {
+                return discovered;
+            }
+        }
+        catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.InvalidNamespace)
+        {
+            _logger.LogInformation("MSMQ WMI namespace not found on {ComputerName}; falling back to perf WMI class for outgoing queue discovery.", computerName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Primary outgoing queue discovery failed on {ComputerName}; attempting fallback.", computerName);
+        }
+
+        try
+        {
+            var perfScope = new ManagementScope($@"\\{pathMachineName}\root\cimv2");
+            perfScope.Connect();
+
+            using var perfSearcher = new ManagementObjectSearcher(
+                perfScope,
+                new ObjectQuery("SELECT Name, MessagesinQueue FROM Win32_PerfRawData_msmq_MSMQQueue"));
+            using var perfResults = perfSearcher.Get();
+
+            foreach (ManagementObject result in perfResults)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                var instanceName = result["Name"]?.ToString();
+                if (!IsOutgoingQueuePerfInstance(instanceName, pathMachineName, localMachineName))
+                {
+                    continue;
+                }
+
+                var messageCount = 0;
+                var rawCount = result["MessagesinQueue"];
+                if (rawCount is ulong ulongCount)
+                {
+                    messageCount = ulongCount > int.MaxValue ? int.MaxValue : (int)ulongCount;
+                }
+                else if (rawCount is uint uintCount)
+                {
+                    messageCount = uintCount > int.MaxValue ? int.MaxValue : (int)uintCount;
+                }
+                else if (rawCount != null && int.TryParse(rawCount.ToString(), out var parsedCount))
+                {
+                    messageCount = parsedCount;
+                }
+
+                discovered.Add(new QueueInfo
+                {
+                    Id = $"outgoing-{Math.Abs(instanceName!.GetHashCode())}",
+                    Name = instanceName!,
+                    Path = instanceName!,
+                    FormatName = instanceName!,
+                    ComputerName = computerName,
+                    QueueType = QueueType.Outgoing,
+                    MessageCount = messageCount,
+                    Label = "Outgoing Queue",
+                    CanRead = false,
+                    CanWrite = false,
+                    IsLocal = IsLocalComputer(computerName),
+                    IsAccessible = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to discover outgoing queues on {ComputerName}", computerName);
+        }
+
+        return discovered;
+    }
+
+    private static bool IsOutgoingQueueIdentifier(string? queueIdentifier)
+    {
+        if (string.IsNullOrWhiteSpace(queueIdentifier))
+        {
+            return false;
+        }
+
+        if (!queueIdentifier.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase)
+            && !queueIdentifier.StartsWith("OS:", StringComparison.OrdinalIgnoreCase)
+            && !queueIdentifier.StartsWith("TCP:", StringComparison.OrdinalIgnoreCase)
+            && !queueIdentifier.StartsWith("HTTP:", StringComparison.OrdinalIgnoreCase)
+            && !queueIdentifier.StartsWith("HTTPS:", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (queueIdentifier.Contains("\\SYSTEM$;", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (queueIdentifier.EndsWith(";JOURNAL", StringComparison.OrdinalIgnoreCase)
+            || queueIdentifier.EndsWith(";DEADLETTER", StringComparison.OrdinalIgnoreCase)
+            || queueIdentifier.EndsWith(";DEADXACT", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsOutgoingQueuePerfInstance(string? instanceName, string normalizedComputerName, string localMachineName)
+    {
+        if (string.IsNullOrWhiteSpace(instanceName))
+        {
+            return false;
+        }
+
+        if (instanceName.Equals("Computer Queues", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (instanceName.StartsWith($"{normalizedComputerName}\\", StringComparison.OrdinalIgnoreCase)
+            || instanceName.StartsWith($"{localMachineName}\\", StringComparison.OrdinalIgnoreCase)
+            || instanceName.StartsWith(@".\", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return IsOutgoingQueueIdentifier(instanceName);
+    }
+
+    /// <summary>
     /// Adds a queue if it does not already exist in the target list.
     /// </summary>
     private static void TryAddQueue(ICollection<QueueInfo> queues, QueueInfo queue)
@@ -163,6 +359,25 @@ public class MsmqService : IMsmqService
         return computerName;
     }
 
+    private static string NormalizeQueuePathForMessageQueue(string queuePath)
+    {
+        if (queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase))
+        {
+            return queuePath;
+        }
+
+        if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase)
+            || queuePath.StartsWith("OS:", StringComparison.OrdinalIgnoreCase)
+            || queuePath.StartsWith("TCP:", StringComparison.OrdinalIgnoreCase)
+            || queuePath.StartsWith("HTTP:", StringComparison.OrdinalIgnoreCase)
+            || queuePath.StartsWith("HTTPS:", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"FormatName:{queuePath}";
+        }
+
+        return queuePath;
+    }
+
     private static bool IsLocalComputer(string computerName)
     {
         return string.Equals(computerName, ".", StringComparison.OrdinalIgnoreCase)
@@ -178,12 +393,7 @@ public class MsmqService : IMsmqService
 
         try
         {
-            // Convert DIRECT format to FormatName format for the MessageQueue constructor
-            string actualQueuePath = queuePath;
-            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
-            {
-                actualQueuePath = $"FormatName:{queuePath}";
-            }
+            var actualQueuePath = NormalizeQueuePathForMessageQueue(queuePath);
 
             using var queue = new MessageQueue(actualQueuePath);
             var queueInfo = MsmqConverter.ToQueueInfo(queue);
@@ -205,12 +415,7 @@ public class MsmqService : IMsmqService
 
         try
         {
-            // Convert DIRECT format to FormatName format for the MessageQueue constructor
-            string actualQueuePath = queuePath;
-            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
-            {
-                actualQueuePath = $"FormatName:{queuePath}";
-            }
+            var actualQueuePath = NormalizeQueuePathForMessageQueue(queuePath);
 
             using var queue = new MessageQueue(actualQueuePath);
             var messages = queue.GetAllMessages();
@@ -277,15 +482,11 @@ public class MsmqService : IMsmqService
 
         try
         {
-            if (queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase) == false)
-            {
-                _logger.LogWarning("Using FormatName paths may limit certain operations. QueuePath: {QueuePath}", queuePath);
-                queuePath = $"FormatName:{queuePath}";
-            }
-            
+            var actualQueuePath = NormalizeQueuePathForMessageQueue(queuePath);
+
             _logger.LogInformation("Retrieving messages from {QueuePath} (peek: {PeekOnly})", queuePath, peekOnly);
 
-            using var queue = new MessageQueue(queuePath);
+            using var queue = new MessageQueue(actualQueuePath);
             queue.MessageReadPropertyFilter.SetAll();
 
             var msmqMessages = peekOnly ? queue.GetAllMessages() : queue.GetAllMessages();
@@ -298,7 +499,7 @@ public class MsmqService : IMsmqService
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                messages.Add(MsmqConverter.ToQueueMessage(msmqMessages[i], queuePath));
+                messages.Add(MsmqConverter.ToQueueMessage(msmqMessages[i], actualQueuePath));
             }
 
             _logger.LogInformation("Retrieved {Count} messages from {QueuePath}", messages.Count, queuePath);
@@ -324,12 +525,7 @@ public class MsmqService : IMsmqService
         {
             _logger.LogWarning("===> Retrieving journal messages from {JournalQueuePath}", journalQueuePath);
 
-            // Convert DIRECT format to FormatName format for the MessageQueue constructor
-            string queuePath = journalQueuePath;
-            if (journalQueuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
-            {
-                queuePath = $"FormatName:{journalQueuePath}";
-            }
+            var queuePath = NormalizeQueuePathForMessageQueue(journalQueuePath);
 
             using var journalQueue = new MessageQueue(queuePath);
 
@@ -383,12 +579,7 @@ public class MsmqService : IMsmqService
 
         try
         {
-            // Convert DIRECT format to FormatName format for the MessageQueue constructor
-            string actualQueuePath = queuePath;
-            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
-            {
-                actualQueuePath = $"FormatName:{queuePath}";
-            }
+            var actualQueuePath = NormalizeQueuePathForMessageQueue(queuePath);
 
             using var queue = new MessageQueue(actualQueuePath);
             queue.MessageReadPropertyFilter.SetAll();
@@ -420,12 +611,7 @@ public class MsmqService : IMsmqService
 
         try
         {
-            // Convert DIRECT format to FormatName format for the MessageQueue constructor
-            string actualQueuePath = queuePath;
-            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
-            {
-                actualQueuePath = $"FormatName:{queuePath}";
-            }
+            var actualQueuePath = NormalizeQueuePathForMessageQueue(queuePath);
 
             using var queue = new MessageQueue(actualQueuePath);
             queue.MessageReadPropertyFilter.SetAll();
@@ -463,12 +649,7 @@ public class MsmqService : IMsmqService
 
         try
         {
-            // Convert DIRECT format to FormatName format for the MessageQueue constructor
-            string actualQueuePath = queuePath;
-            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
-            {
-                actualQueuePath = $"FormatName:{queuePath}";
-            }
+            var actualQueuePath = NormalizeQueuePathForMessageQueue(queuePath);
 
             using var queue = new MessageQueue(actualQueuePath);
             queue.ReceiveById(messageId);
@@ -504,12 +685,7 @@ public class MsmqService : IMsmqService
 
         try
         {
-            // Convert DIRECT format to FormatName format for the MessageQueue constructor
-            string actualQueuePath = queuePath;
-            if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
-            {
-                actualQueuePath = $"FormatName:{queuePath}";
-            }
+            var actualQueuePath = NormalizeQueuePathForMessageQueue(queuePath);
 
             using var queue = new MessageQueue(actualQueuePath);
             var count = queue.GetAllMessages().Length;
@@ -540,10 +716,7 @@ public class MsmqService : IMsmqService
         {
             _logger.LogInformation("Sending message to queue: {QueuePath}", queuePath);
 
-            // Ensure the queue path has FormatName prefix for proper handling
-            var actualQueuePath = queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase)
-                ? queuePath
-                : $"FormatName:{queuePath}";
+            var actualQueuePath = NormalizeQueuePathForMessageQueue(queuePath);
 
             _logger.LogInformation("Using queue path: {ActualQueuePath}", actualQueuePath);
 
@@ -876,16 +1049,15 @@ public class MsmqService : IMsmqService
             // MessageQueue.Exists() doesn't work with FormatName or DIRECT= paths
             // For these paths, try to create a MessageQueue and see if it works
             if (queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase) || 
-                queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
+                queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase) ||
+                queuePath.StartsWith("OS:", StringComparison.OrdinalIgnoreCase) ||
+                queuePath.StartsWith("TCP:", StringComparison.OrdinalIgnoreCase) ||
+                queuePath.StartsWith("HTTP:", StringComparison.OrdinalIgnoreCase) ||
+                queuePath.StartsWith("HTTPS:", StringComparison.OrdinalIgnoreCase))
             {
                 try
                 {
-                    // Convert DIRECT= format to FormatName format if needed
-                    string actualQueuePath = queuePath;
-                    if (queuePath.StartsWith("DIRECT=", StringComparison.OrdinalIgnoreCase))
-                    {
-                        actualQueuePath = $"FormatName:{queuePath}";
-                    }
+                    var actualQueuePath = NormalizeQueuePathForMessageQueue(queuePath);
 
                     using var testQueue = new MessageQueue(actualQueuePath);
                     // Try to access a property to verify the queue exists

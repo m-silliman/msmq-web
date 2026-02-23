@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using MsMqApp.Models.Domain;
+using MsMqApp.Models.Enums;
 using MsMqApp.Models.UI;
 
 namespace MsMqApp.Components.Shared;
@@ -165,7 +166,9 @@ public class QueueTreeViewBase : ComponentBase
                         // Reconstruct the node ID based on view type
                         targetSelectedId = CurrentViewType switch
                         {
-                            Models.Enums.QueueViewType.QueueMessages => $"{SelectedQueue.Id}_messages",
+                            Models.Enums.QueueViewType.QueueMessages => SelectedQueue.QueueType == QueueType.Outgoing
+                                ? SelectedQueue.Id
+                                : $"{SelectedQueue.Id}_messages",
                             Models.Enums.QueueViewType.JournalMessages => $"{SelectedQueue.Id}_journal",
                             Models.Enums.QueueViewType.Queue => SelectedQueue.Id,
                             _ => SelectedQueue.Id

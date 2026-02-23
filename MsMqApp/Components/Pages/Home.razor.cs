@@ -26,6 +26,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
         QueueType.TransactionalDeadLetter,
         QueueType.Outgoing
     ];
+    private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues support monitoring counts, but reading individual outgoing messages is not supported.";
     
     private bool _disposed;
     private DotNetObjectReference<HomeBase>? _dotNetRef;
@@ -654,6 +655,16 @@ public class HomeBase : ComponentBase, IAsyncDisposable
         {
             // Debug logging to track what we're trying to load
             Console.WriteLine($"[DEBUG] LoadMessagesAsync called - ViewType: {viewType}, QueuePath: {queuePath}");
+
+            if (viewType == QueueViewType.QueueMessages && SelectedQueue?.QueueType == QueueType.Outgoing)
+            {
+                Console.WriteLine($"[DEBUG] Skipping message retrieval for outgoing queue: {queuePath}");
+                Messages.Clear();
+                SelectedMessage = null;
+                IsDetailDrawerOpen = false;
+                ShowOperationFeedback(OutgoingQueueReadNotSupportedMessage, isSuccess: false);
+                return;
+            }
 
             OperationResult<IEnumerable<QueueMessage>> result;
 
