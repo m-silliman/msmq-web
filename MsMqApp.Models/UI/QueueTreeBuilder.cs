@@ -10,7 +10,7 @@ public static class QueueTreeBuilder
 {
     /// <summary>
     /// Builds a tree node structure from a queue connection.
-    /// Organizes queues hierarchically: Private, Public, System, Journal.
+    /// Organizes queues hierarchically: Private, Public, Outgoing, System.
     /// </summary>
     /// <param name="connection">The queue connection containing queues.</param>
     /// <param name="expandAll">Whether to expand all nodes by default.</param>
@@ -34,8 +34,8 @@ public static class QueueTreeBuilder
         // Group queues by type
         var privateQueues = filteredQueues.Where(q => q.QueueType == QueueType.Private).ToList();
         var publicQueues = filteredQueues.Where(q => q.QueueType == QueueType.Public).ToList();
-        var systemQueues = filteredQueues.Where(q => q.IsSystemQueue && !q.IsJournalQueue).ToList();
-        var journalQueues = filteredQueues.Where(q => q.IsJournalQueue).ToList();
+        var outgoingQueues = filteredQueues.Where(q => q.QueueType == QueueType.Outgoing).ToList();
+        var systemQueues = filteredQueues.Where(q => q.IsSystemQueue).ToList();
 
         // Add Private Queues folder
         if (privateQueues.Any())
@@ -59,6 +59,17 @@ public static class QueueTreeBuilder
                 expandAll));
         }
 
+            // Add Outgoing Queues folder
+            if (outgoingQueues.Any())
+            {
+                rootNode.Children.Add(CreateQueueFolder(
+                "outgoing",
+                "Outgoing Queues",
+                outgoingQueues,
+                1,
+                expandAll));
+            }
+
         // Add System Queues folder
         if (systemQueues.Any())
         {
@@ -66,17 +77,6 @@ public static class QueueTreeBuilder
                 "system",
                 "System Queues",
                 systemQueues,
-                1,
-                expandAll));
-        }
-
-        // Add Journal Queues folder
-        if (journalQueues.Any())
-        {
-            rootNode.Children.Add(CreateQueueFolder(
-                "journal",
-                "Journal Queues",
-                journalQueues,
                 1,
                 expandAll));
         }
@@ -111,7 +111,7 @@ public static class QueueTreeBuilder
         };
 
         // Add individual queue nodes
-        foreach (var queue in queues.OrderBy(q => q.Name))
+        foreach (var queue in SortQueuesForFolder(queues))
         {
             folderNode.Children.Add(CreateQueueNode(queue, level + 1));
         }
@@ -124,15 +124,17 @@ public static class QueueTreeBuilder
     /// </summary>
     private static TreeNodeData CreateQueueNode(QueueInfo queue, int level)
     {
+        var supportsJournalChildren = queue.QueueType != QueueType.Outgoing && !queue.IsSystemQueue;
+
         var queueNode = new TreeNodeData
         {
             Id = queue.Id,
-            Text = queue.Name,
+            Text = GetQueueDisplayName(queue),
             IconClass = "bi bi-folder", // Queue now shows as folder
             BadgeCount = queue.MessageCount > 0 ? queue.MessageCount : null,
-            SecondaryBadgeCount = queue.JournalMessageCount > 0 ? queue.JournalMessageCount : null,
+            SecondaryBadgeCount = supportsJournalChildren && queue.JournalMessageCount > 0 ? queue.JournalMessageCount : null,
             IsExpanded = false,
-            HasChildren = true, // Always has children (queue messages + journal)
+            HasChildren = true,
             Level = level,
             Data = queue,
             ViewType = QueueViewType.Queue,
@@ -154,21 +156,61 @@ public static class QueueTreeBuilder
         };
         queueNode.Children.Add(messageQNode);
 
-        var journalQNode = new TreeNodeData
+        if (supportsJournalChildren)
         {
-            Id = $"{queue.Id}_journal",
-            Text = "Journal Messages",
-            IconClass = "bi bi-journal-text",
-            BadgeCount = queue.JournalMessageCount > 0 ? queue.JournalMessageCount : null,
-            IsExpanded = false,
-            HasChildren = false,
-            Level = level + 1,        
-            Data = queue,
-            ViewType = QueueViewType.JournalMessages
-        };
-        queueNode.Children.Add(journalQNode);
+            var journalQNode = new TreeNodeData
+            {
+                Id = $"{queue.Id}_journal",
+                Text = "Journal Messages",
+                IconClass = "bi bi-journal-text",
+                BadgeCount = queue.JournalMessageCount > 0 ? queue.JournalMessageCount : null,
+                IsExpanded = false,
+                HasChildren = false,
+                Level = level + 1,
+                Data = queue,
+                ViewType = QueueViewType.JournalMessages
+            };
+
+            queueNode.Children.Add(journalQNode);
+        }
 
         return queueNode;
+    }
+
+    /// <summary>
+    /// Sorts queues for deterministic folder display.
+    /// </summary>
+    private static IEnumerable<QueueInfo> SortQueuesForFolder(IEnumerable<QueueInfo> queues)
+    {
+        return queues.OrderBy(GetQueueSortOrder).ThenBy(q => q.Name, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Gets sort order for queue types. System queues are pinned in canonical order.
+    /// </summary>
+    private static int GetQueueSortOrder(QueueInfo queue)
+    {
+        return queue.QueueType switch
+        {
+            QueueType.Journal => 0,
+            QueueType.DeadLetter => 1,
+            QueueType.TransactionalDeadLetter => 2,
+            _ => 10
+        };
+    }
+
+    /// <summary>
+    /// Gets a user-friendly queue display name.
+    /// </summary>
+    private static string GetQueueDisplayName(QueueInfo queue)
+    {
+        return queue.QueueType switch
+        {
+            QueueType.Journal => "Journal Messages",
+            QueueType.DeadLetter => "Dead-letter Messages",
+            QueueType.TransactionalDeadLetter => "Transactional dead-letter Messages",
+            _ => queue.Name
+        };
     }
 
     /// <summary>
@@ -185,6 +227,7 @@ public static class QueueTreeBuilder
         {
             QueueType.Private => "bi bi-inbox",
             QueueType.Public => "bi bi-envelope",
+            QueueType.Outgoing => "bi bi-send",
             QueueType.Journal => "bi bi-journal-text",
             QueueType.DeadLetter => "bi bi-x-circle",
             QueueType.TransactionalDeadLetter => "bi bi-x-octagon",

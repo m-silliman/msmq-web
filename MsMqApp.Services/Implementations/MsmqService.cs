@@ -22,7 +22,7 @@ public class MsmqService : IMsmqService
 
     #region Queue Discovery
 
-    public Task<OperationResult<IEnumerable<QueueInfo>>> GetQueuesAsync(
+    public async Task<OperationResult<IEnumerable<QueueInfo>>> GetQueuesAsync(
         string computerName,
         bool includeSystemQueues = false,
         CancellationToken cancellationToken = default)
@@ -43,25 +43,131 @@ public class MsmqService : IMsmqService
                     break;
 
                 var queueInfo = MsmqConverter.ToQueueInfo(queue);
-                queues.Add(queueInfo);
+                TryAddQueue(queues, queueInfo);
                 queue.Dispose();
             }
 
             _logger.LogInformation("Found {Count} private queues on {ComputerName}", queues.Count, computerName);
+
+            if (includeSystemQueues)
+            {
+                var systemQueues = await DiscoverSystemQueuesAsync(computerName, cancellationToken);
+                foreach (var queue in systemQueues)
+                {
+                    TryAddQueue(queues, queue);
+                }
+            }
 
             // Filter out system queues if requested
             var result = includeSystemQueues
                 ? queues
                 : queues.Where(q => !q.IsSystemQueue).ToList();
 
-            return Task.FromResult(OperationResult<IEnumerable<QueueInfo>>.Successful(result));
+            return OperationResult<IEnumerable<QueueInfo>>.Successful(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to discover queues on {ComputerName}", computerName);
-            return Task.FromResult(OperationResult<IEnumerable<QueueInfo>>.Failure(
-                $"Failed to discover queues: {ex.Message}", ex));
+            return OperationResult<IEnumerable<QueueInfo>>.Failure(
+                $"Failed to discover queues: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    /// Discovers fixed MSMQ system queues for a machine.
+    /// </summary>
+    private async Task<List<QueueInfo>> DiscoverSystemQueuesAsync(
+        string computerName,
+        CancellationToken cancellationToken)
+    {
+        var discovered = new List<QueueInfo>();
+        var directMachineName = NormalizeComputerNameForDirectFormat(computerName);
+        var pathMachineName = NormalizeComputerNameForPath(computerName);
+
+        var definitions = new[]
+        {
+            new { Suffix = "JOURNAL", PathName = "Journal", DisplayName = "Journal Messages", Type = QueueType.Journal },
+            new { Suffix = "DEADLETTER", PathName = "DeadLetter", DisplayName = "Dead-letter Messages", Type = QueueType.DeadLetter },
+            new { Suffix = "DEADXACT", PathName = "TransDeadLetter", DisplayName = "Transactional dead-letter Messages", Type = QueueType.TransactionalDeadLetter }
+        };
+
+        foreach (var definition in definitions)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            var formatName = $"DIRECT=OS:{directMachineName}\\SYSTEM$;{definition.Suffix}";
+            var existsResult = await QueueExistsAsync(formatName, cancellationToken);
+
+            if (!existsResult.Success || existsResult.Data != true)
+            {
+                continue;
+            }
+
+            var countResult = await GetMessageCountAsync(formatName, cancellationToken);
+
+            discovered.Add(new QueueInfo
+            {
+                Id = $"system-{directMachineName}-{definition.Suffix.ToLowerInvariant()}",
+                Name = definition.DisplayName,
+                Path = $"{pathMachineName}\\System$\\{definition.PathName}",
+                FormatName = formatName,
+                ComputerName = computerName,
+                QueueType = definition.Type,
+                MessageCount = countResult.Success ? countResult.Data : 0,
+                Label = definition.DisplayName,
+                CanRead = true,
+                CanWrite = false,
+                IsLocal = IsLocalComputer(computerName),
+                IsAccessible = true
+            });
+        }
+
+        return discovered;
+    }
+
+    /// <summary>
+    /// Adds a queue if it does not already exist in the target list.
+    /// </summary>
+    private static void TryAddQueue(ICollection<QueueInfo> queues, QueueInfo queue)
+    {
+        if (queues.Any(existing =>
+            string.Equals(existing.FormatName, queue.FormatName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(existing.Path, queue.Path, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        queues.Add(queue);
+    }
+
+    private static string NormalizeComputerNameForDirectFormat(string computerName)
+    {
+        if (string.Equals(computerName, "localhost", StringComparison.OrdinalIgnoreCase))
+        {
+            return ".";
+        }
+
+        return string.IsNullOrWhiteSpace(computerName) ? "." : computerName;
+    }
+
+    private static string NormalizeComputerNameForPath(string computerName)
+    {
+        if (string.IsNullOrWhiteSpace(computerName) || string.Equals(computerName, "localhost", StringComparison.OrdinalIgnoreCase))
+        {
+            return ".";
+        }
+
+        return computerName;
+    }
+
+    private static bool IsLocalComputer(string computerName)
+    {
+        return string.Equals(computerName, ".", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(computerName, "localhost", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(computerName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
     }
 
     public Task<OperationResult<QueueInfo>> GetQueueInfoAsync(

@@ -81,7 +81,7 @@ public class QueueConnectionManager : IQueueConnectionManager
             }
 
             // Get queues
-            var queuesResult = await _msmqService.GetQueuesAsync(normalizedName, false, cancellationToken);
+            var queuesResult = await _msmqService.GetQueuesAsync(normalizedName, true, cancellationToken);
             if (!queuesResult.Success)
             {
                 connection.MarkFailed(GetFriendlyErrorMessage(queuesResult.ErrorMessage));

@@ -6,7 +6,7 @@ namespace MsMqApp.Components.Shared;
 
 /// <summary>
 /// Component for displaying a hierarchical tree view of MSMQ queues.
-/// Organizes queues by type (Private, Public, System, Journal) and provides
+/// Organizes queues by type (Private, Public, Outgoing, System) and provides
 /// selection and refresh capabilities.
 /// </summary>
 public class QueueTreeViewBase : ComponentBase

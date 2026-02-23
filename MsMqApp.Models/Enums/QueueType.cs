@@ -16,6 +16,11 @@ public enum QueueType
     Public,
 
     /// <summary>
+    /// Dynamic outgoing connector queue
+    /// </summary>
+    Outgoing,
+
+    /// <summary>
     /// System queue (e.g., Dead Letter, Journal)
     /// </summary>
     System,

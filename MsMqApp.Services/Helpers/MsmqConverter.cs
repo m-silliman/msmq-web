@@ -170,6 +170,9 @@ internal static class MsmqConverter
             queueMessage.EncryptionAlgorithm = 0;
         }
 
+        queueMessage.MessageClass = ExtractMessageClass(message);
+        queueMessage.MessageType = ExtractMessageType(message);
+
         queueMessage.Authenticated = false; // Property not available in Experimental.System.Messaging
 
         // Convert message body
@@ -241,12 +244,61 @@ internal static class MsmqConverter
         return lastSlash >= 0 ? queuePath.Substring(lastSlash + 1) : queuePath;
     }
 
+    private static string ExtractMessageClass(Message message)
+    {
+        var classProperty = message.GetType().GetProperty("Class");
+        var classValue = classProperty?.GetValue(message)?.ToString();
+
+        if (!string.IsNullOrWhiteSpace(classValue))
+        {
+            return classValue;
+        }
+
+        var messageType = ExtractMessageType(message);
+        return messageType == 0 ? "Normal" : $"Type {messageType}";
+    }
+
+    private static int ExtractMessageType(Message message)
+    {
+        var typeProperty = message.GetType().GetProperty("MessageType");
+        var typeValue = typeProperty?.GetValue(message);
+
+        if (typeValue is int intType)
+        {
+            return intType;
+        }
+
+        if (typeValue is Enum enumType)
+        {
+            return Convert.ToInt32(enumType);
+        }
+
+        if (typeValue != null && int.TryParse(typeValue.ToString(), out var parsedType))
+        {
+            return parsedType;
+        }
+
+        return 0;
+    }
+
     private static QueueType DetermineQueueType(string queuePath)
     {
         if (string.IsNullOrEmpty(queuePath))
             return QueueType.Private;
 
         var lowerPath = queuePath.ToLowerInvariant();
+
+        if (lowerPath.Contains("system$;deadletter") || lowerPath.Contains("\\system$\\deadletter"))
+            return QueueType.DeadLetter;
+
+        if (lowerPath.Contains("system$;deadxact") || lowerPath.Contains("\\system$\\transdeadletter"))
+            return QueueType.TransactionalDeadLetter;
+
+        if (lowerPath.Contains("system$;journal") || lowerPath.Contains("\\system$\\journal"))
+            return QueueType.Journal;
+
+        if (lowerPath.Contains("outgoing") || lowerPath.Contains("connector") || lowerPath.Contains("xactonly"))
+            return QueueType.Outgoing;
 
         if (lowerPath.Contains("private$"))
             return QueueType.Private;

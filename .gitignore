@@ -32,6 +32,7 @@ bld/
 [Ll]og/
 [Ll]ogs/
 installer/*.exe
+installer.nsi
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
@@ -466,3 +467,4 @@ App_Data/
 # User uploads (if applicable - be careful with this)
 # uploads/
 # UserFiles/
+installer/installer.nsi

@@ -194,6 +194,7 @@ public class QueueInfo
     /// Gets a value indicating whether this queue is a system queue
     /// </summary>
     public bool IsSystemQueue => QueueType == QueueType.System ||
+                                  QueueType == QueueType.Journal ||
                                   QueueType == QueueType.DeadLetter ||
                                   QueueType == QueueType.TransactionalDeadLetter;
 

@@ -31,6 +31,9 @@
                     <dt>Sent</dt>
                     <dd>@Message.SentTime.ToString("yyyy-MM-dd HH:mm:ss.fff")</dd>
 
+                    <dt>Class</dt>
+                    <dd>@GetMessageClassDisplayText()</dd>
+
                     @if (Message.HasCorrelationId)
                     {
                         <dt>Correlation ID</dt>

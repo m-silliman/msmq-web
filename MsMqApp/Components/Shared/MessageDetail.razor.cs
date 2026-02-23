@@ -94,6 +94,20 @@ public class MessageDetailBase : ComponentBase
     }
 
     /// <summary>
+    /// Gets a display-friendly message class text.
+    /// </summary>
+    /// <returns>The formatted message class text.</returns>
+    protected string GetMessageClassDisplayText()
+    {
+        if (Message == null || string.IsNullOrWhiteSpace(Message.MessageClass))
+        {
+            return "Normal";
+        }
+
+        return Message.MessageClass;
+    }
+
+    /// <summary>
     /// Gets the checkmark icon and color for boolean properties.
     /// </summary>
     /// <param name="value">The boolean value.</param>

@@ -54,6 +54,8 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected bool IsPurgeDialogOpen { get; set; }
     protected bool IsPurgeProcessing { get; set; }
     protected string? PurgeErrorMessage { get; set; }
+    protected string? OperationFeedbackMessage { get; set; }
+    protected string OperationFeedbackClass { get; set; } = "alert-success";
     protected int RefreshIntervalSeconds
     {
         get => _persistentRefreshIntervalSeconds;
@@ -317,7 +319,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
 
             var result = await MsmqService.GetQueuesAsync(
                 CurrentConnection.ComputerName,
-                includeSystemQueues: false);
+                includeSystemQueues: true);
 
             if (result.Success && result.Data != null)
             {
@@ -393,6 +395,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
         {
             IsPurgeProcessing = true;
             PurgeErrorMessage = null;
+            ClearOperationFeedback();
             StateHasChanged();
 
             // Determine the correct queue path for purging
@@ -415,6 +418,19 @@ public class HomeBase : ComponentBase, IAsyncDisposable
             {
                 // Success - close dialog and refresh
                 IsPurgeDialogOpen = false;
+
+                var purgedCount = purgeResult.Metadata.TryGetValue("MessagesPurged", out var metadataCount)
+                    && metadataCount is int count
+                    ? count
+                    : 0;
+
+                var messageScope = result.ViewType == QueueViewType.JournalMessages
+                    ? "journal"
+                    : "queue";
+
+                ShowOperationFeedback(
+                    $"The {messageScope} was purged. {purgedCount:N0} message{(purgedCount == 1 ? string.Empty : "s")} removed from {result.Queue.Name}.",
+                    isSuccess: true);
                 
                 // Refresh the queue data and current view
                 await RefreshQueuesAsync();
@@ -426,12 +442,14 @@ public class HomeBase : ComponentBase, IAsyncDisposable
             {
                 // Show error in dialog
                 PurgeErrorMessage = purgeResult.ErrorMessage ?? "Unknown error occurred during purge operation.";
+                ShowOperationFeedback(PurgeErrorMessage, isSuccess: false);
                 StateHasChanged();
             }
         }
         catch (Exception ex)
         {
             PurgeErrorMessage = $"Error occurred while purging: {ex.Message}";
+            ShowOperationFeedback(PurgeErrorMessage, isSuccess: false);
             StateHasChanged();
         }
         finally
@@ -451,6 +469,34 @@ public class HomeBase : ComponentBase, IAsyncDisposable
         IsPurgeProcessing = false;
         StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Dismisses the operation feedback alert.
+    /// </summary>
+    protected Task DismissOperationFeedbackAsync()
+    {
+        ClearOperationFeedback();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Shows operation feedback in the page header area.
+    /// </summary>
+    private void ShowOperationFeedback(string message, bool isSuccess)
+    {
+        OperationFeedbackMessage = message;
+        OperationFeedbackClass = isSuccess ? "alert-success" : "alert-danger";
+    }
+
+    /// <summary>
+    /// Clears the operation feedback message.
+    /// </summary>
+    private void ClearOperationFeedback()
+    {
+        OperationFeedbackMessage = null;
+        OperationFeedbackClass = "alert-success";
     }
 
     #endregion

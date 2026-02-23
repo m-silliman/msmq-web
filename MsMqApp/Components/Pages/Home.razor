@@ -33,6 +33,18 @@
         </div>
     </div>
 
+    @if (!string.IsNullOrWhiteSpace(OperationFeedbackMessage))
+    {
+        <div class="alert @OperationFeedbackClass alert-dismissible fade show mt-3 mb-2" role="status">
+            <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+            @OperationFeedbackMessage
+            <button type="button"
+                    class="btn-close"
+                    aria-label="Close"
+                    @onclick="DismissOperationFeedbackAsync"></button>
+        </div>
+    }
+
     <!-- Three-Panel Layout -->
     <div class="home-content">
         <!-- Left Panel: Queue Tree View -->

@@ -158,6 +158,11 @@ public class QueueMessage
     public int MessageType { get; set; }
 
     /// <summary>
+    /// Gets or sets the MSMQ message class text (for example: Normal, DeadLetter, ReachQueueTimeout).
+    /// </summary>
+    public string MessageClass { get; set; } = "Normal";
+
+    /// <summary>
     /// Gets or sets the hash algorithm used
     /// </summary>
     public int HashAlgorithm { get; set; }
@@ -265,6 +270,7 @@ public class QueueMessage
             Extension = Extension,
             LookupId = LookupId,
             MessageType = MessageType,
+            MessageClass = MessageClass,
             HashAlgorithm = HashAlgorithm,
             DigitalSignature = DigitalSignature
         };
