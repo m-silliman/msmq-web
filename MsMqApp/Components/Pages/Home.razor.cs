@@ -44,6 +44,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     [Inject] protected IMessageOperationsService MessageOperationsService { get; set; } = default!;
     [Inject] protected IQueueConnectionManager ConnectionManager { get; set; } = default!;
     [Inject] protected IJSRuntime JSRuntime { get; set; } = default!;
+    [Inject] protected NavigationManager NavigationManager { get; set; } = default!;
 
     // State
     protected QueueConnection? CurrentConnection { get; set; }
@@ -95,8 +96,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     {
         await base.OnInitializedAsync();
 
-        // Initialize with default local connection using ConnectionManager
-        await ConnectToLocalhostAsync();
+        await ConnectToUrlHostAsync();
     }
 
     /// <inheritdoc/>
@@ -1037,15 +1037,50 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     }
 
     /// <summary>
+    /// Connects to the host from the current URL.
+    /// </summary>
+    protected async Task ConnectToUrlHostAsync()
+    {
+        var computerName = GetComputerNameFromCurrentUrl();
+        var result = await ConnectionManager.ConnectAsync(computerName, displayName: computerName);
+
+        if (result.Success && result.Data != null)
+        {
+            CurrentConnection = result.Data;
+            LastSuccessfulComputer = computerName;
+            StateHasChanged();
+            return;
+        }
+
+        ShowOperationFeedback(
+            $"Failed to connect to URL host '{computerName}'. Use Connect to choose another server.",
+            isSuccess: false);
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Gets the target computer name from the current navigation URL host.
+    /// </summary>
+    private string GetComputerNameFromCurrentUrl()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var host = uri.Host;
+
+        return string.IsNullOrWhiteSpace(host)
+            ? "."
+            : host;
+    }
+
+    /// <summary>
     /// Connects to localhost.
     /// </summary>
     protected async Task ConnectToLocalhostAsync()
     {
-        var result = await ConnectionManager.ConnectAsync(".", displayName: $"{Environment.MachineName} (Local)");
+        var result = await ConnectionManager.ConnectAsync("localhost", displayName: "localhost");
         if (result.Success && result.Data != null)
         {
             CurrentConnection = result.Data;
-            LastSuccessfulComputer = ".";
+            LastSuccessfulComputer = "localhost";
             StateHasChanged();
         }
     }
