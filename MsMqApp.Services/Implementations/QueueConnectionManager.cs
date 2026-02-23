@@ -12,6 +12,15 @@ namespace MsMqApp.Services.Implementations;
 public class QueueConnectionManager : IQueueConnectionManager
 {
     private readonly Dictionary<string, QueueConnection> _connections = new();
+    private static readonly HashSet<QueueType> JournalLookupExclusionQueueTypes =
+    [
+        QueueType.System,
+        QueueType.Journal,
+        QueueType.DeadLetter,
+        QueueType.TransactionalDeadLetter,
+        QueueType.Outgoing
+    ];
+
     private readonly IMsmqService _msmqService;
     private readonly ILogger<QueueConnectionManager> _logger;
 
@@ -106,6 +115,11 @@ public class QueueConnectionManager : IQueueConnectionManager
             {
                 if (cancellationToken.IsCancellationRequested)
                     break;
+
+                if (ShouldSkipJournalLookup(queue))
+                {
+                    continue;
+                }
 
                 try
                 {
@@ -273,6 +287,11 @@ public class QueueConnectionManager : IQueueConnectionManager
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
+                if (ShouldSkipJournalLookup(queue))
+                {
+                    continue;
+                }
+
                 try
                 {
                     var journalCountResult = await _msmqService.GetJournalMessageCountAsync(
@@ -403,6 +422,12 @@ public class QueueConnectionManager : IQueueConnectionManager
         }
 
         return normalized;
+    }
+
+    private static bool ShouldSkipJournalLookup(QueueInfo queue)
+    {
+        return string.IsNullOrWhiteSpace(queue.Path)
+               || JournalLookupExclusionQueueTypes.Contains(queue.QueueType);
     }
 
     private static bool IsLocalComputer(string computerName)

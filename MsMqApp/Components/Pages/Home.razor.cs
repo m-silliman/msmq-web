@@ -18,6 +18,14 @@ public class HomeBase : ComponentBase, IAsyncDisposable
 {
     // Static field to persist refresh interval across queue selections and component lifecycle
     private static int _persistentRefreshIntervalSeconds = 10;
+    private static readonly HashSet<QueueType> JournalLookupExclusionQueueTypes =
+    [
+        QueueType.System,
+        QueueType.Journal,
+        QueueType.DeadLetter,
+        QueueType.TransactionalDeadLetter,
+        QueueType.Outgoing
+    ];
     
     private bool _disposed;
     private DotNetObjectReference<HomeBase>? _dotNetRef;
@@ -329,6 +337,11 @@ public class HomeBase : ComponentBase, IAsyncDisposable
                 // Populate journal information for each queue
                 foreach (var queue in CurrentConnection.Queues)
                 {
+                    if (ShouldSkipJournalLookup(queue))
+                    {
+                        continue;
+                    }
+
                     // Always try to get journal info - some queues may have journaling even if flag isn't set
                     if (!string.IsNullOrEmpty(queue.Path))
                     {
@@ -1113,5 +1126,11 @@ public class HomeBase : ComponentBase, IAsyncDisposable
         None,
         Delete,
         Purge
+    }
+
+    private static bool ShouldSkipJournalLookup(QueueInfo queue)
+    {
+        return string.IsNullOrWhiteSpace(queue.Path)
+               || JournalLookupExclusionQueueTypes.Contains(queue.QueueType);
     }
 }
