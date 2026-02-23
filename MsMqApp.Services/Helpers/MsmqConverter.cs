@@ -170,8 +170,8 @@ internal static class MsmqConverter
             queueMessage.EncryptionAlgorithm = 0;
         }
 
-        queueMessage.MessageClass = ExtractMessageClass(message);
         queueMessage.MessageType = ExtractMessageType(message);
+        queueMessage.MessageClass = ExtractMessageClass(message, queueMessage.MessageType);
 
         queueMessage.Authenticated = false; // Property not available in Experimental.System.Messaging
 
@@ -244,41 +244,68 @@ internal static class MsmqConverter
         return lastSlash >= 0 ? queuePath.Substring(lastSlash + 1) : queuePath;
     }
 
-    private static string ExtractMessageClass(Message message)
+    private static string ExtractMessageClass(Message message, int messageType)
     {
-        var classProperty = message.GetType().GetProperty("Class");
-        var classValue = classProperty?.GetValue(message)?.ToString();
-
-        if (!string.IsNullOrWhiteSpace(classValue))
+        if (messageType == (int)MessageType.Normal)
         {
-            return classValue;
+            return "Normal";
         }
 
-        var messageType = ExtractMessageType(message);
+        if (messageType == (int)MessageType.Report)
+        {
+            return "Report";
+        }
+
+        if (messageType == (int)MessageType.Acknowledgment)
+        {
+            return ExtractAcknowledgmentClass(message);
+        }
+
         return messageType == 0 ? "Normal" : $"Type {messageType}";
+    }
+
+    private static string ExtractAcknowledgmentClass(Message message)
+    {
+        try
+        {
+            return message.Acknowledgment switch
+            {
+                Acknowledgment.None => "Acknowledgment",
+                Acknowledgment.ReachQueue => "Reached queue",
+                Acknowledgment.Receive => "Received",
+                Acknowledgment.ReachQueueTimeout => "Timeout (reach queue)",
+                Acknowledgment.ReceiveTimeout => "Timeout (receive)",
+                Acknowledgment.AccessDenied => "Permissions error / access denied",
+                Acknowledgment.NotTransactionalQueue => "Not transactional (queue)",
+                Acknowledgment.NotTransactionalMessage => "Not transactional (message)",
+                Acknowledgment.BadSignature => "Bad signature",
+                Acknowledgment.BadEncryption => "Bad encryption",
+                Acknowledgment.QueueDeleted => "Queue deleted",
+                Acknowledgment.QueuePurged => "Queue purged",
+                Acknowledgment.Purged => "Purged",
+                Acknowledgment.HopCountExceeded => "Hop count exceeded",
+                Acknowledgment.BadDestinationQueue => "Bad destination queue",
+                Acknowledgment.CouldNotEncrypt => "Could not encrypt",
+                Acknowledgment.QueueExceedMaximumSize => "Queue exceeded maximum size",
+                _ => message.Acknowledgment.ToString()
+            };
+        }
+        catch
+        {
+            return "Acknowledgment";
+        }
     }
 
     private static int ExtractMessageType(Message message)
     {
-        var typeProperty = message.GetType().GetProperty("MessageType");
-        var typeValue = typeProperty?.GetValue(message);
-
-        if (typeValue is int intType)
+        try
         {
-            return intType;
+            return (int)message.MessageType;
         }
-
-        if (typeValue is Enum enumType)
+        catch
         {
-            return Convert.ToInt32(enumType);
+            return 0;
         }
-
-        if (typeValue != null && int.TryParse(typeValue.ToString(), out var parsedType))
-        {
-            return parsedType;
-        }
-
-        return 0;
     }
 
     private static QueueType DetermineQueueType(string queuePath)
