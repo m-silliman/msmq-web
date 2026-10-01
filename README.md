@@ -125,7 +125,6 @@ dotnet publish -c Release -r win-x64 --self-contained
 
 ## Documentation
 
-- `CLAUDE.md` - Guidance for AI assistants working with this codebase
 - `Documentation/prd.md` - Product Requirements Document (880 lines)
 - `Documentation/coding-standards.md` - Comprehensive coding standards (4,254 lines)
 
