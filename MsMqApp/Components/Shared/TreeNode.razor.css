@@ -105,6 +105,14 @@
     text-align: center;
 }
 
+/* Unreported counts are status text, not numeric badges. */
+.tree-node-count-status {
+    color: var(--app-text-secondary);
+    font-size: 0.75rem;
+    font-weight: 400;
+    flex-shrink: 0;
+}
+
 /* Children Container */
 .tree-node-children {
     display: block;

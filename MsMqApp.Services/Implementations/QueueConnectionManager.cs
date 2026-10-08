@@ -9,19 +9,72 @@ namespace MsMqApp.Services.Implementations;
 /// <summary>
 /// Implementation of queue connection manager - manages connections to local and remote MSMQ computers
 /// </summary>
-public class QueueConnectionManager : IQueueConnectionManager
+public class QueueConnectionManager : IQueueConnectionManager, IDisposable
 {
     private readonly Dictionary<string, QueueConnection> _connections = new();
-    private static readonly HashSet<QueueType> JournalLookupExclusionQueueTypes =
-    [
-        QueueType.System,
-        QueueType.Journal,
-        QueueType.DeadLetter,
-        QueueType.TransactionalDeadLetter,
-        QueueType.Outgoing
-    ];
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, CancellationTokenSource> _enrichment = new();
+    private bool _disposed;
 
-    private readonly IMsmqService _msmqService;
+    private void StartEnrichment(QueueConnection connection, bool includeSystemQueues, CancellationToken token)
+    {
+        if (_disposed) return;
+        if (_enrichment.TryRemove(connection.Id, out var previous)) previous.Cancel();
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
+        _enrichment[connection.Id] = cancellation;
+        _ = EnrichAsync(connection, includeSystemQueues, cancellation);
+    }
+
+    private async Task EnrichAsync(QueueConnection connection, bool includeSystemQueues, CancellationTokenSource cancellation)
+    {
+        try
+        {
+            // Let the caller publish the discovered queue names before starting more work.
+            await Task.Yield();
+            var token = cancellation.Token;
+            if (includeSystemQueues)
+            {
+                var discovery = await _msmqService.GetQueuesAsync(connection.ComputerName, true, token);
+                token.ThrowIfCancellationRequested();
+                if (discovery.Success && discovery.Data != null)
+                {
+                    var extra = discovery.Data.Where(q => q.IsSystemQueue || q.QueueType == QueueType.Outgoing);
+                    connection.Queues = connection.Queues.Concat(extra).ToList();
+                    NotifyEnriched(connection);
+                }
+            }
+            foreach (var batch in connection.Queues.Chunk(2))
+            {
+                token.ThrowIfCancellationRequested();
+                var results = await Task.WhenAll(batch.Select(queue =>
+                    _msmqService.GetQueueMetricsAsync(connection.ComputerName, queue.FormatName, token)));
+                token.ThrowIfCancellationRequested();
+                for (var i = 0; i < batch.Length; i++)
+                    batch[i].ApplyMetrics(results[i].Success && results[i].Data != null
+                        ? results[i].Data! : new QueueMetrics(null, null));
+                NotifyEnriched(connection);
+                if (results.Any(r => r.Exception is TimeoutException)) break;
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { _logger.LogWarning(ex, "Background queue enrichment failed for {ComputerName}", connection.ComputerName); }
+        finally
+        {
+            if (_enrichment.TryGetValue(connection.Id, out var current) && ReferenceEquals(current, cancellation))
+                _enrichment.TryRemove(new KeyValuePair<string, CancellationTokenSource>(connection.Id, cancellation));
+            cancellation.Dispose();
+        }
+    }
+
+    private void NotifyEnriched(QueueConnection connection) => ConnectionRefreshed?.Invoke(this,
+        new ConnectionRefreshedEventArgs { ConnectionId = connection.Id, QueueCount = connection.Queues.Count });
+
+    public void Dispose()
+    {
+        _disposed = true;
+        foreach (var pending in _enrichment.Values.ToArray()) pending.Cancel();
+        _enrichment.Clear();
+    }
+private readonly IMsmqService _msmqService;
     private readonly ILogger<QueueConnectionManager> _logger;
 
     public event EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateChanged;
@@ -69,28 +122,8 @@ public class QueueConnectionManager : IQueueConnectionManager
 
         try
         {
-            // Test connection first
-            var testResult = await _msmqService.TestConnectionAsync(normalizedName, 30, cancellationToken);
-            if (!testResult.Success)
-            {
-                connection.MarkFailed(GetFriendlyErrorMessage(testResult.ErrorMessage));
-                _logger.LogError("Connection test failed for {ComputerName}: {Error}", normalizedName, testResult.ErrorMessage);
-
-                ConnectionFailed?.Invoke(this, new ConnectionFailedEventArgs
-                {
-                    ConnectionId = connection.Id,
-                    ErrorMessage = testResult.ErrorMessage ?? "Unknown error",
-                    WillRetry = false,
-                    RetryAttempt = 0
-                });
-
-                return OperationResult<QueueConnection>.Failure(
-                    GetFriendlyErrorMessage(testResult.ErrorMessage),
-                    testResult.Exception);
-            }
-
             // Get queues
-            var queuesResult = await _msmqService.GetQueuesAsync(normalizedName, true, cancellationToken);
+            var queuesResult = await _msmqService.GetQueuesAsync(normalizedName, false, cancellationToken);
             if (!queuesResult.Success)
             {
                 connection.MarkFailed(GetFriendlyErrorMessage(queuesResult.ErrorMessage));
@@ -109,32 +142,7 @@ public class QueueConnectionManager : IQueueConnectionManager
                     queuesResult.Exception);
             }
 
-            // Populate queue journal counts
             var queues = queuesResult.Data?.ToList() ?? new List<QueueInfo>();
-            foreach (var queue in queues)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
-
-                if (ShouldSkipJournalLookup(queue))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    var journalCountResult = await _msmqService.GetJournalMessageCountAsync(queue.Path, cancellationToken);
-                    if (journalCountResult.Success)
-                    {
-                        queue.JournalMessageCount = journalCountResult.Data;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to get journal count for queue {QueuePath}", queue.Path);
-                    // Continue even if journal count fails
-                }
-            }
 
             connection.RefreshQueues(queues);
             connection.MarkConnected();
@@ -152,9 +160,10 @@ public class QueueConnectionManager : IQueueConnectionManager
                 NewStatus = ConnectionStatus.Connected
             });
 
+            StartEnrichment(connection, includeSystemQueues: true, cancellationToken);
             return OperationResult<QueueConnection>.Successful(connection);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             var errorMsg = GetFriendlyErrorMessage(ex.Message);
             connection.MarkFailed(errorMsg);
@@ -184,6 +193,7 @@ public class QueueConnectionManager : IQueueConnectionManager
         var oldStatus = connection.Status;
         connection.MarkDisconnected();
         _connections.Remove(connectionId);
+        if (_enrichment.TryRemove(connectionId, out var pending)) pending.Cancel();
 
         _logger.LogInformation("Disconnected from {ComputerName}", connection.ComputerName);
 
@@ -269,7 +279,7 @@ public class QueueConnectionManager : IQueueConnectionManager
         {
             // Get queues
             var queuesResult = await _msmqService.GetQueuesAsync(
-                connection.ComputerName, includeSystemQueues, cancellationToken);
+                connection.ComputerName, false, cancellationToken);
 
             if (!queuesResult.Success)
             {
@@ -280,32 +290,7 @@ public class QueueConnectionManager : IQueueConnectionManager
                     queuesResult.Exception);
             }
 
-            // Populate queue journal counts
             var queues = queuesResult.Data?.ToList() ?? new List<QueueInfo>();
-            foreach (var queue in queues)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
-
-                if (ShouldSkipJournalLookup(queue))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    var journalCountResult = await _msmqService.GetJournalMessageCountAsync(
-                        queue.Path, cancellationToken);
-                    if (journalCountResult.Success)
-                    {
-                        queue.JournalMessageCount = journalCountResult.Data;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to get journal count for queue {QueuePath}", queue.Path);
-                }
-            }
 
             connection.RefreshQueues(queues);
 
@@ -318,9 +303,10 @@ public class QueueConnectionManager : IQueueConnectionManager
                 QueueCount = queues.Count
             });
 
+            StartEnrichment(connection, includeSystemQueues, cancellationToken);
             return OperationResult<QueueConnection>.Successful(connection);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(ex, "Failed to refresh connection {ConnectionId}", connectionId);
             return OperationResult<QueueConnection>.Failure(
@@ -424,13 +410,7 @@ public class QueueConnectionManager : IQueueConnectionManager
         return normalized;
     }
 
-    private static bool ShouldSkipJournalLookup(QueueInfo queue)
-    {
-        return string.IsNullOrWhiteSpace(queue.Path)
-               || JournalLookupExclusionQueueTypes.Contains(queue.QueueType);
-    }
-
-    private static bool IsLocalComputer(string computerName)
+private static bool IsLocalComputer(string computerName)
     {
         return computerName == "." ||
                computerName.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||

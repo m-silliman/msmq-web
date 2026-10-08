@@ -79,7 +79,18 @@
             }
             else if (CurrentViewType == QueueViewType.QueueProperties)
             {
-                <QueueProperties Queue="@SelectedQueue" />
+                @if (IsLoadingQueueProperties)
+                {
+                    <LoadingSpinner Message="Loading queue properties..." />
+                }
+                else if (QueuePropertiesError != null)
+                {
+                    <div class="alert alert-warning">@QueuePropertiesError</div>
+                }
+                else
+                {
+                    <QueueProperties Queue="@SelectedQueue" />
+                }
             }
             else
             {
@@ -87,7 +98,6 @@
                              SelectedQueue="@SelectedQueue"
                              ViewType="@CurrentViewType"
                              SelectedMessage="@SelectedMessage"
-                             SelectedMessageChanged="@HandleMessageSelectedAsync"
                              OnMessageSelected="@HandleMessageSelectedAsync"
                              OnSelectionChanged="@HandleSelectionChangedAsync"
                              OnRefresh="@RefreshMessagesAsync"

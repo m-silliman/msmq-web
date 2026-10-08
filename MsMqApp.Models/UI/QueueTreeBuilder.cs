@@ -101,7 +101,7 @@ public static class QueueTreeBuilder
             Id = $"folder-{idSuffix}",
             Text = folderName,
             IconClass = "bi bi-folder",
-            BadgeCount = totalMessages > 0 ? totalMessages : null,
+            BadgeCount = queues.All(q => q.MessageCountKnown) ? totalMessages : null,
             IsExpanded = expandAll,
             HasChildren = queues.Any(),
             Level = level,
@@ -133,8 +133,8 @@ public static class QueueTreeBuilder
             Id = queue.Id,
             Text = GetQueueDisplayName(queue),
             IconClass = "bi bi-folder", // Queue now shows as folder
-            BadgeCount = queue.MessageCount > 0 ? queue.MessageCount : null,
-            SecondaryBadgeCount = supportsJournalChildren && queue.JournalMessageCount > 0 ? queue.JournalMessageCount : null,
+            BadgeCount = queue.MessageCountKnown ? queue.MessageCount : null,
+            SecondaryBadgeCount = supportsJournalChildren && queue.JournalMessageCountKnown ? queue.JournalMessageCount : null,
             IsExpanded = false,
             HasChildren = !isOutgoingQueue,
             Level = level,
@@ -154,7 +154,7 @@ public static class QueueTreeBuilder
             Id = $"{queue.Id}_messages",
             Text = "Queue Messages",
             IconClass = "bi bi-envelope-fill",
-            BadgeCount = queue.MessageCount > 0 ? queue.MessageCount : null,
+            BadgeCount = queue.MessageCountKnown ? queue.MessageCount : null,
             IsExpanded = false,
             HasChildren = false,
             Level = level + 1,
@@ -170,7 +170,7 @@ public static class QueueTreeBuilder
                 Id = $"{queue.Id}_journal",
                 Text = "Journal Messages",
                 IconClass = "bi bi-journal-text",
-                BadgeCount = queue.JournalMessageCount > 0 ? queue.JournalMessageCount : null,
+                BadgeCount = queue.JournalMessageCountKnown ? queue.JournalMessageCount : null,
                 IsExpanded = false,
                 HasChildren = false,
                 Level = level + 1,
@@ -294,22 +294,22 @@ public static class QueueTreeBuilder
                 {
                     case QueueViewType.Queue:
                         // Queue folder node shows both queue and journal counts
-                        node.BadgeCount = currentQueue.MessageCount > 0 ? currentQueue.MessageCount : null;
-                        node.SecondaryBadgeCount = currentQueue.JournalMessageCount > 0 ? currentQueue.JournalMessageCount : null;
+                        node.BadgeCount = currentQueue.MessageCountKnown ? currentQueue.MessageCount : null;
+                        node.SecondaryBadgeCount = currentQueue.JournalMessageCountKnown ? currentQueue.JournalMessageCount : null;
                         return currentQueue.MessageCount;
 
                     case QueueViewType.QueueMessages:
                         // Queue messages node shows only queue count
-                        node.BadgeCount = currentQueue.MessageCount > 0 ? currentQueue.MessageCount : null;
+                        node.BadgeCount = currentQueue.MessageCountKnown ? currentQueue.MessageCount : null;
                         return currentQueue.MessageCount;
 
                     case QueueViewType.JournalMessages:
                         // Journal messages node shows only journal count
-                        node.BadgeCount = currentQueue.JournalMessageCount > 0 ? currentQueue.JournalMessageCount : null;
+                        node.BadgeCount = currentQueue.JournalMessageCountKnown ? currentQueue.JournalMessageCount : null;
                         return currentQueue.JournalMessageCount;
 
                     default:
-                        node.BadgeCount = currentQueue.MessageCount > 0 ? currentQueue.MessageCount : null;
+                        node.BadgeCount = currentQueue.MessageCountKnown ? currentQueue.MessageCount : null;
                         return currentQueue.MessageCount;
                 }
             }

@@ -218,6 +218,8 @@ public class QueueTreeViewBase : ComponentBase
         if (Connection.Status == Models.Enums.ConnectionStatus.Connected)
         {
             var queueCount = Connection.TotalQueues;
+            if (Connection.Queues.Any(q => !q.MessageCountKnown))
+                return $"{queueCount} queues, some message counts unavailable or loading";
             var messageCount = Connection.TotalMessages;
             return $"{queueCount} queue{(queueCount != 1 ? "s" : "")}, {messageCount:N0} message{(messageCount != 1 ? "s" : "")}";
         }
@@ -368,8 +370,8 @@ public class QueueTreeViewBase : ComponentBase
         // Show purge button if there are messages in the selected queue/view
         return CurrentViewType switch
         {
-            Models.Enums.QueueViewType.QueueMessages => SelectedQueue.MessageCount > 0,
-            Models.Enums.QueueViewType.JournalMessages => SelectedQueue.JournalMessageCount > 0,
+            Models.Enums.QueueViewType.QueueMessages => !SelectedQueue.MessageCountKnown || SelectedQueue.MessageCount > 0,
+            Models.Enums.QueueViewType.JournalMessages => !SelectedQueue.JournalMessageCountKnown || SelectedQueue.JournalMessageCount > 0,
             _ => false
         };
     }

@@ -40,7 +40,10 @@ public class QueueInfo
     /// <summary>
     /// Gets or sets the current message count in the queue
     /// </summary>
-    public int MessageCount { get; set; }
+    private int _messageCount;
+    public int MessageCount { get => _messageCount; set { _messageCount = value; MessageCountKnown = true; } }
+    public bool MessageCountKnown { get; set; }
+    public string MessageCountText => MessageCountKnown ? MessageCount.ToString("N0") : "Unknown";
 
     /// <summary>
     /// Gets or sets whether the queue is transactional
@@ -126,7 +129,18 @@ public class QueueInfo
     /// <summary>
     /// Gets or sets the current message count in the journal queue
     /// </summary>
-    public int JournalMessageCount { get; set; }
+    private int _journalMessageCount;
+    public int JournalMessageCount { get => _journalMessageCount; set { _journalMessageCount = value; JournalMessageCountKnown = true; } }
+    public bool JournalMessageCountKnown { get; set; }
+    public string JournalMessageCountText => JournalMessageCountKnown ? JournalMessageCount.ToString("N0") : "Unknown";
+
+    public void ApplyMetrics(QueueMetrics metrics)
+    {
+        MessageCount = metrics.MessageCount ?? 0;
+        MessageCountKnown = metrics.MessageCount.HasValue;
+        JournalMessageCount = metrics.JournalMessageCount ?? 0;
+        JournalMessageCountKnown = metrics.JournalMessageCount.HasValue;
+    }
 
     /// <summary>
     /// Gets a value indicating whether this queue has journaling enabled and accessible
@@ -206,7 +220,7 @@ public class QueueInfo
     /// <summary>
     /// Determines if the queue is empty
     /// </summary>
-    public bool IsEmpty => MessageCount == 0;
+    public bool IsEmpty => MessageCountKnown && MessageCount == 0;
 
     /// <summary>
     /// Creates a deep copy of this QueueInfo
@@ -231,6 +245,8 @@ public class QueueInfo
             IsLocal = IsLocal,
             UseJournalQueue = UseJournalQueue,
             JournalMessageCount = JournalMessageCount,
+            MessageCountKnown = MessageCountKnown,
+            JournalMessageCountKnown = JournalMessageCountKnown,
             Authenticate = Authenticate,
             TypeId = TypeId,
             PrivacyLevel = PrivacyLevel,

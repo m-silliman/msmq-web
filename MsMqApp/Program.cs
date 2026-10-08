@@ -79,6 +79,10 @@ builder.Services.AddSingleton<TextFormatHandler>();
 builder.Services.AddSingleton<BinaryFormatHandler>();
 
 // Register application services
+builder.Services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ApplicationSettings>>().Value);
+builder.Services.AddSingleton<MsmqOperationExecutor>();
+builder.Services.AddSingleton<IMsmqQueueMetricsReader, MsmqQueueMetricsReader>();
+builder.Services.AddScoped<NativeMsmqService>();
 builder.Services.AddScoped<IMsmqService, MsmqService>();
 builder.Services.AddScoped<IMessageSerializer, MessageSerializer>();
 builder.Services.AddScoped<IMessageOperationsService, MessageOperationsService>();

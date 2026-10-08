@@ -28,7 +28,7 @@
         @GetFormattedTime()
     </div>
 
-    <div class="message-row-cell message-cell-size" title="@Message.Body.SizeBytes.ToString("N0") bytes">
+    <div class="message-row-cell message-cell-size" title="@(Message.IsBodyLoaded ? $"{Message.Body.SizeBytes:N0} bytes" : "Select the message to load its body")">
         @Message.FormattedSize
     </div>
 </div>

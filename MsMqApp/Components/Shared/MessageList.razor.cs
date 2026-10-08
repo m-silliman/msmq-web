@@ -169,10 +169,10 @@ public class MessageListBase : ComponentBase
     {
         if (FilteredMessages.Count != Messages.Count)
         {
-            return $"{FilteredMessages.Count} of {Messages.Count} messages";
+            return $"{FilteredMessages.Count} of {Messages.Count} loaded messages (limited view)";
         }
 
-        return $"{Messages.Count} message{(Messages.Count != 1 ? "s" : "")}";
+        return $"{Messages.Count} loaded message{(Messages.Count != 1 ? "s" : "")} (limited view)";
     }
 
     /// <summary>

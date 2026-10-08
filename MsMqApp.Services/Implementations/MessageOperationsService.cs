@@ -79,7 +79,7 @@ public class MessageOperationsService : IMessageOperationsService
 
             return deleteResult;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(
                 ex,
@@ -166,7 +166,7 @@ public class MessageOperationsService : IMessageOperationsService
 
             return moveResult;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(
                 ex,
@@ -281,7 +281,7 @@ public class MessageOperationsService : IMessageOperationsService
 
             return sendResult;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(
                 ex,
@@ -403,7 +403,7 @@ public class MessageOperationsService : IMessageOperationsService
 
             return result;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(
                 ex,
@@ -538,7 +538,7 @@ public class MessageOperationsService : IMessageOperationsService
 
             return result;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(
                 ex,
@@ -601,7 +601,7 @@ public class MessageOperationsService : IMessageOperationsService
 
             return purgeResult;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(
                 ex,
@@ -688,7 +688,7 @@ public class MessageOperationsService : IMessageOperationsService
 
             return result;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(
                 ex,

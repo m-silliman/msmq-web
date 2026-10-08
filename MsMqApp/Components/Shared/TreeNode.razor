@@ -32,6 +32,23 @@
 
         <span class="tree-node-text">@NodeData.Text</span>
 
+        @if (NodeData.Data is MsMqApp.Models.Domain.QueueInfo countQueue)
+        {
+            var queueNotCounted = NodeData.ViewType != MsMqApp.Models.Enums.QueueViewType.JournalMessages && !countQueue.MessageCountKnown;
+            var journalNotCounted = (NodeData.ViewType == MsMqApp.Models.Enums.QueueViewType.JournalMessages ||
+                (NodeData.ViewType == MsMqApp.Models.Enums.QueueViewType.Queue && !countQueue.IsSystemQueue && countQueue.QueueType != MsMqApp.Models.Enums.QueueType.Outgoing))
+                && !countQueue.JournalMessageCountKnown;
+            @if (queueNotCounted || journalNotCounted)
+            {
+                var status = NodeData.ViewType == MsMqApp.Models.Enums.QueueViewType.Queue && queueNotCounted != journalNotCounted
+                    ? (queueNotCounted ? "Queue not counted" : "Journal not counted")
+                    : "Not counted";
+                <span class="tree-node-count-status"
+                      title="MSMQ has not reported a count. This does not indicate whether the queue is empty."
+                      aria-label="@status">@status</span>
+            }
+        }
+
         @if (NodeData.BadgeCount.HasValue)
         {
             <span class="tree-node-badge badge bg-secondary"

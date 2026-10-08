@@ -112,8 +112,9 @@ public class PurgeConfirmationDialogBase : ComponentBase
     /// <summary>
     /// Gets the message count to be purged.
     /// </summary>
-    protected int MessageCount =>
-        ViewType == QueueViewType.JournalMessages ? (Queue?.JournalMessageCount ?? 0) : (Queue?.MessageCount ?? 0);
+    protected string MessageCount => ViewType == QueueViewType.JournalMessages
+        ? (Queue?.JournalMessageCountKnown == true ? Queue.JournalMessageCountText : "all")
+        : (Queue?.MessageCountKnown == true ? Queue.MessageCountText : "all");
 
     /// <summary>
     /// Gets the text describing the type of messages being purged.

@@ -9,6 +9,22 @@ namespace MsMqApp.Services.Helpers;
 /// </summary>
 internal static class MsmqConverter
 {
+    public static QueueInfo ToQueueIdentity(MessageQueue queue)
+    {
+        var path = queue.Path;
+        return new QueueInfo
+        {
+            Id = path.ToUpperInvariant(),
+            Name = ExtractQueueName(path),
+            Path = path,
+            FormatName = MsmqAddress.ToFormatName(path),
+            ComputerName = MsmqAddress.Server(path),
+            QueueType = DetermineQueueType(path),
+            IsLocal = IsLocalQueue(MsmqAddress.Server(path)),
+            CanRead = true,
+            CanWrite = true
+        };
+    }
     /// <summary>
     /// Converts a System.Messaging.MessageQueue to QueueInfo domain model
     /// </summary>
@@ -32,17 +48,6 @@ internal static class MsmqConverter
             queueInfo.CanRead = queue.CanRead;
             queueInfo.CanWrite = queue.CanWrite;
             queueInfo.IsTransactional = queue.Transactional;
-
-            // Try to get message count
-            try
-            {
-                var messages = queue.GetAllMessages();
-                queueInfo.MessageCount = messages.Length;
-            }
-            catch
-            {
-                queueInfo.MessageCount = 0;
-            }
 
             // Try to get additional properties
             if (!string.IsNullOrEmpty(queue.Label))
@@ -184,6 +189,7 @@ internal static class MsmqConverter
     private static MessageBody ExtractMessageBody(Message message)
     {
         var messageBody = new MessageBody();
+
 
         try
         {

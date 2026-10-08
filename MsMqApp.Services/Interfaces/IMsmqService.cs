@@ -9,10 +9,17 @@ namespace MsMqApp.Services.Interfaces;
 /// </summary>
 /// <remarks>
 /// This service uses System.Messaging internally to communicate with MSMQ.
-/// All operations support cancellation and provide detailed error information through OperationResult.
+/// Cancellation stops admission, cooperative enumeration, and the caller's wait. It cannot abort
+/// an in-flight native MSMQ/WMI call. A canceled or timed-out mutation may still complete; refresh
+/// before retrying. Native workers retain their concurrency permits until they actually finish.
+/// Deadlines use ApplicationSettings.RemoteConnectionTimeoutSeconds (TestConnectionAsync can override it).
 /// </remarks>
 public interface IMsmqService
 {
+    /// <summary>Read paired management counts without scanning messages. Null counts are unavailable.</summary>
+    Task<OperationResult<QueueMetrics>> GetQueueMetricsAsync(string computerName, string formatName,
+        CancellationToken cancellationToken = default);
+
     #region Queue Discovery
 
     /// <summary>
@@ -94,16 +101,16 @@ public interface IMsmqService
     #region Message Retrieval
 
     /// <summary>
-    /// Retrieves all messages from the specified queue without removing them.
+    /// Retrieves bounded metadata-only rows without removing messages. Load a selected message separately for its body.
     /// </summary>
     /// <param name="queuePath">The full queue path</param>
     /// <param name="peekOnly">
-    /// If true, messages are only peeked (not removed). If false, messages are received and removed.
+    /// Must be true for list retrieval. False returns a failure; use an explicit single-message receive.
     /// Default is true.
     /// </param>
     /// <param name="maxMessages">
-    /// Maximum number of messages to retrieve. Use 0 or negative value for unlimited.
-    /// Default is 0 (all messages).
+    /// Maximum rows to retrieve. Zero or negative uses ApplicationSettings.MessageListPageSize.
+    /// Default is 0 (configured list limit).
     /// </param>
     /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
     /// <returns>
@@ -122,12 +129,12 @@ public interface IMsmqService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves all messages from the specified journal queue without removing them.
+    /// Retrieves bounded metadata-only journal rows without removing messages.
     /// </summary>
     /// <param name="journalQueuePath">The full journal queue path (should already include ;journal suffix)</param>
     /// <param name="maxMessages">
-    /// Maximum number of messages to retrieve. Use 0 or negative value for unlimited.
-    /// Default is 0 (all messages).
+    /// Maximum rows to retrieve. Zero or negative uses ApplicationSettings.MessageListPageSize.
+    /// Default is 0 (configured list limit).
     /// </param>
     /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
     /// <returns>

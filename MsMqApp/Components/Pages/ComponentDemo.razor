@@ -405,34 +405,30 @@
             <h3 class="mb-0">MessageBodyViewer Component</h3>
         </div>
         <div class="card-body">
-            <p>Advanced message body viewer with format selection, syntax highlighting, copy-to-clipboard functionality, and truncation support for large messages.</p>
+            <p>Advanced message body viewer with format selection, syntax highlighting, copy-to-clipboard functionality, and full message body display.</p>
 
             <h5 class="mb-3">XML Format</h5>
             <div style="height: 300px;">
                 <MessageBodyViewer MessageBody="@GetDetailDemoMessages()[0].Body"
-                                   ShowMetadata="true"
-                                   MaxDisplaySize="@(1024 * 1024)" />
+                                   ShowMetadata="true" />
             </div>
 
             <h5 class="mb-3 mt-4">JSON Format</h5>
             <div style="height: 300px;">
                 <MessageBodyViewer MessageBody="@GetDetailDemoMessages()[1].Body"
-                                   ShowMetadata="true"
-                                   MaxDisplaySize="@(1024 * 1024)" />
+                                   ShowMetadata="true" />
             </div>
 
             <h5 class="mb-3 mt-4">Plain Text Format</h5>
             <div style="height: 250px;">
                 <MessageBodyViewer MessageBody="@GetDetailDemoMessages()[2].Body"
-                                   ShowMetadata="true"
-                                   MaxDisplaySize="@(1024 * 1024)" />
+                                   ShowMetadata="true" />
             </div>
 
             <h5 class="mb-3 mt-4">Binary Format (Hex Display)</h5>
             <div style="height: 250px;">
                 <MessageBodyViewer MessageBody="@GetDetailDemoMessages()[3].Body"
-                                   ShowMetadata="true"
-                                   MaxDisplaySize="@(1024 * 1024)" />
+                                   ShowMetadata="true" />
             </div>
 
             <h5 class="mb-3 mt-4">Empty/Null Body</h5>
@@ -446,7 +442,7 @@
                 <li><strong>Format Selection:</strong> Auto-detect or manually select format (Auto, Text, XML, JSON, Binary)</li>
                 <li><strong>Syntax Highlighting:</strong> Basic syntax highlighting for XML and JSON formats</li>
                 <li><strong>Copy to Clipboard:</strong> One-click copy of formatted content with visual feedback</li>
-                <li><strong>Large Content Handling:</strong> Automatic truncation with warning for content exceeding size limits</li>
+                <li><strong>Large Content Handling:</strong> Complete selected-message bodies without display truncation</li>
                 <li><strong>Metadata Footer:</strong> Displays format, size, and encoding information</li>
                 <li><strong>Dark/Light Mode:</strong> Fully integrated with theme system</li>
                 <li><strong>Responsive:</strong> Mobile-friendly toolbar layout</li>

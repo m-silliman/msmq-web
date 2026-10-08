@@ -32,6 +32,7 @@ public class QueueDto
     /// Gets or sets the message count in the queue
     /// </summary>
     public int MessageCount { get; set; }
+    public bool MessageCountKnown { get; set; }
 
     /// <summary>
     /// Gets or sets the queue type
@@ -70,6 +71,7 @@ public class QueueDto
             Path = queueInfo.Path,
             DisplayName = queueInfo.DisplayName,
             MessageCount = queueInfo.MessageCount,
+            MessageCountKnown = queueInfo.MessageCountKnown,
             QueueType = queueInfo.QueueType.ToString(),
             IsTransactional = queueInfo.IsTransactional,
             ComputerName = queueInfo.ComputerName,
@@ -89,6 +91,7 @@ public class QueueDto
             Name = Name,
             Path = Path,
             MessageCount = MessageCount,
+            MessageCountKnown = MessageCountKnown,
             QueueType = Enum.TryParse<QueueType>(QueueType, out var qt) ? qt : Enums.QueueType.Private,
             IsTransactional = IsTransactional,
             ComputerName = ComputerName,

@@ -18,17 +18,12 @@ public class HomeBase : ComponentBase, IAsyncDisposable
 {
     // Static field to persist refresh interval across queue selections and component lifecycle
     private static int _persistentRefreshIntervalSeconds = 10;
-    private static readonly HashSet<QueueType> JournalLookupExclusionQueueTypes =
-    [
-        QueueType.System,
-        QueueType.Journal,
-        QueueType.DeadLetter,
-        QueueType.TransactionalDeadLetter,
-        QueueType.Outgoing
-    ];
-    private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues support monitoring counts, but reading individual outgoing messages is not supported.";
+private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues support monitoring counts, but reading individual outgoing messages is not supported.";
     
     private bool _disposed;
+    private readonly CancellationTokenSource _lifetime = new();
+    private CancellationTokenSource? _listRequest;
+    private CancellationTokenSource? _detailRequest;
     private DotNetObjectReference<HomeBase>? _dotNetRef;
     private QueueMessage? _pendingOperationMessage;
     private PendingOperation _pendingOperation = PendingOperation.None;
@@ -59,6 +54,8 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     // UI State
     protected bool IsDetailDrawerOpen { get; set; }
     protected bool IsLoadingMessages { get; set; }
+    protected bool IsLoadingQueueProperties { get; set; }
+    protected string? QueuePropertiesError { get; set; }
     protected bool IsRefreshing { get; set; }
     protected bool AutoRefreshEnabled { get; set; } = true;
     protected bool IsPurgeDialogOpen { get; set; }
@@ -96,6 +93,8 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     {
         await base.OnInitializedAsync();
 
+        ConnectionManager.ConnectionRefreshed += OnConnectionRefreshed;
+
         await ConnectToUrlHostAsync();
     }
 
@@ -119,12 +118,33 @@ public class HomeBase : ComponentBase, IAsyncDisposable
 
     #region Queue Operations
 
+    private void OnConnectionRefreshed(object? sender, ConnectionRefreshedEventArgs args)
+    {
+        if (_disposed) return;
+        _ = InvokeAsync(() =>
+        {
+            if (_disposed || CurrentConnection?.Id != args.ConnectionId) return;
+            if (SelectedQueue != null)
+            {
+                var current = CurrentConnection.Queues.FirstOrDefault(q => q.Id == SelectedQueue.Id);
+                if (current != null)
+                    SelectedQueue.ApplyMetrics(new QueueMetrics(current.MessageCountKnown ? current.MessageCount : null,
+                        current.JournalMessageCountKnown ? current.JournalMessageCount : null));
+            }
+            StateHasChanged();
+        });
+    }
+
     /// <summary>
     /// Handles node selection from the tree view.
     /// Extracts queue info and view type to load appropriate messages.
     /// </summary>
     protected async Task HandleNodeSelectedAsync(TreeNodeData? nodeData)
     {
+        _listRequest?.Cancel();
+        _detailRequest?.Cancel();
+        IsLoadingQueueProperties = false;
+        QueuePropertiesError = null;
         if (nodeData == null)
         {
             SelectedQueue = null;
@@ -180,6 +200,24 @@ public class HomeBase : ComponentBase, IAsyncDisposable
             Messages.Clear();
             SelectedMessage = null;
             IsDetailDrawerOpen = false;
+            if (queueInfo != null && !queueInfo.IsSystemQueue && queueInfo.QueueType != QueueType.Outgoing)
+            {
+                IsLoadingQueueProperties = true;
+                var properties = await MsmqService.GetQueueInfoAsync(queueInfo.Path, _lifetime.Token);
+                if (ReferenceEquals(SelectedQueue, queueInfo) && CurrentViewType == QueueViewType.QueueProperties)
+                {
+                    IsLoadingQueueProperties = false;
+                    if (properties.Success && properties.Data != null)
+                    {
+                        properties.Data.Id = queueInfo.Id;
+                        properties.Data.ApplyMetrics(new QueueMetrics(
+                            queueInfo.MessageCountKnown ? queueInfo.MessageCount : null,
+                            queueInfo.JournalMessageCountKnown ? queueInfo.JournalMessageCount : null));
+                        SelectedQueue = properties.Data;
+                    }
+                    else QueuePropertiesError = properties.ErrorMessage ?? "Queue properties unavailable.";
+                }
+            }
         }
         else if (nodeData.ViewType == QueueViewType.Folder)
         {
@@ -235,6 +273,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     /// </summary>
     protected async Task HandleSummaryQueueSelectedAsync(QueueInfo queue)
     {
+        _detailRequest?.Cancel();
         SelectedQueue = queue;
         CurrentViewType = QueueViewType.QueueMessages;
         SelectedMessage = null;
@@ -319,64 +358,26 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     /// </summary>
     protected async Task RefreshQueuesAsync()
     {
-        if (CurrentConnection == null) return;
+        if (CurrentConnection == null || CurrentConnection.IsRefreshing) return;
+        var connection = CurrentConnection;
 
         try
         {
-            CurrentConnection.IsRefreshing = true;
+            connection.IsRefreshing = true;
             StateHasChanged();
 
-            var result = await MsmqService.GetQueuesAsync(
-                CurrentConnection.ComputerName,
-                includeSystemQueues: true);
-
-            if (result.Success && result.Data != null)
-            {
-                CurrentConnection.Queues = result.Data.ToList();
-                CurrentConnection.Status = ConnectionStatus.Connected;
-
-                // Populate journal information for each queue
-                foreach (var queue in CurrentConnection.Queues)
-                {
-                    if (ShouldSkipJournalLookup(queue))
-                    {
-                        continue;
-                    }
-
-                    // Always try to get journal info - some queues may have journaling even if flag isn't set
-                    if (!string.IsNullOrEmpty(queue.Path))
-                    {
-                        // Use FormatName or Path depending on what's available
-                        var queuePath = !string.IsNullOrEmpty(queue.FormatName) ? queue.FormatName : queue.Path;
-
-                        // Construct journal path (uppercase JOURNAL for FormatName, lowercase for regular paths)
-                        /*
-                        queue.JournalPath = queuePath.StartsWith("FormatName:", StringComparison.OrdinalIgnoreCase)
-                            ? $"{queuePath};journal"
-                            : $"FormatName:{queuePath};journal"; */
-
-                        // Get journal message count using the queue path/formatname
-                        var journalCountResult = await MsmqService.GetJournalMessageCountAsync(queue.JournalPath);
-                        if (journalCountResult.Success)
-                        {
-                            queue.JournalMessageCount = journalCountResult.Data;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                CurrentConnection.Status = ConnectionStatus.Failed;
-            }
+            var result = await ConnectionManager.RefreshConnectionAsync(connection.Id, true, _lifetime.Token);
+            if (!result.Success) ShowOperationFeedback(result.ErrorMessage ?? "Queue refresh failed.", false);
         }
+        catch (OperationCanceledException) { }
         catch (Exception)
         {
-            CurrentConnection.Status = ConnectionStatus.Failed;
+            connection.Status = ConnectionStatus.Failed;
         }
         finally
         {
-            CurrentConnection.IsRefreshing = false;
-            StateHasChanged();
+            connection.IsRefreshing = false;
+            if (!_disposed) StateHasChanged();
         }
     }
 
@@ -433,17 +434,12 @@ public class HomeBase : ComponentBase, IAsyncDisposable
                 // Success - close dialog and refresh
                 IsPurgeDialogOpen = false;
 
-                var purgedCount = purgeResult.Metadata.TryGetValue("MessagesPurged", out var metadataCount)
-                    && metadataCount is int count
-                    ? count
-                    : 0;
-
                 var messageScope = result.ViewType == QueueViewType.JournalMessages
                     ? "journal"
                     : "queue";
 
                 ShowOperationFeedback(
-                    $"The {messageScope} was purged. {purgedCount:N0} message{(purgedCount == 1 ? string.Empty : "s")} removed from {result.Queue.Name}.",
+                    $"The {messageScope} for {result.Queue.Name} was purged.",
                     isSuccess: true);
                 
                 // Refresh the queue data and current view
@@ -648,7 +644,12 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     /// </summary>
     private async Task LoadMessagesAsync(string queuePath, QueueViewType viewType)
     {
+        _listRequest?.Cancel();
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        _listRequest = request;
+        var requestToken = request.Token;
         IsLoadingMessages = true;
+        Messages.Clear();
         StateHasChanged();
 
         try
@@ -674,7 +675,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
                 // Load journal messages
                 result = await MsmqService.GetJournalMessagesAsync(
                     queuePath,
-                    maxMessages: 1000);
+                    maxMessages: 0, cancellationToken: requestToken);
             }
             else
             {
@@ -683,9 +684,10 @@ public class HomeBase : ComponentBase, IAsyncDisposable
                 result = await MsmqService.GetMessagesAsync(
                     queuePath,
                     peekOnly: true,
-                    maxMessages: 1000);
+                    maxMessages: 0, cancellationToken: requestToken);
             }
 
+            requestToken.ThrowIfCancellationRequested();
             if (result.Success && result.Data != null)
             {
                 Messages = result.Data.ToList();
@@ -695,18 +697,25 @@ public class HomeBase : ComponentBase, IAsyncDisposable
             {
                 // Log the error for debugging
                 Console.WriteLine($"Failed to load messages. ViewType: {viewType}, QueuePath: {queuePath}, Error: {result.ErrorMessage}");
+                ShowOperationFeedback(result.ErrorMessage ?? "Unable to load messages from this queue.", isSuccess: false);
                 Messages.Clear();
             }
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             Console.WriteLine($"Exception loading messages. ViewType: {viewType}, QueuePath: {queuePath}, Exception: {ex.Message}");
+            ShowOperationFeedback($"Unable to load messages: {ex.Message}", isSuccess: false);
             Messages.Clear();
         }
         finally
         {
-            IsLoadingMessages = false;
-            StateHasChanged();
+            if (ReferenceEquals(_listRequest, request))
+            {
+                _listRequest = null;
+                IsLoadingMessages = false;
+                if (!_disposed) StateHasChanged();
+            }
         }
     }
 
@@ -715,10 +724,31 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     /// </summary>
     protected async Task HandleMessageSelectedAsync(QueueMessage? message)
     {
-        SelectedMessage = message;
-        IsDetailDrawerOpen = message != null;
-        StateHasChanged();
-        await Task.CompletedTask;
+        _detailRequest?.Cancel();
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        _detailRequest = request;
+        SelectedMessage = null;
+        IsDetailDrawerOpen = false;
+        try
+        {
+            if (message == null) return;
+            var result = message.LookupId != 0
+                ? await MsmqService.GetMessageByLookupIdAsync(message.QueuePath, message.LookupId, cancellationToken: request.Token)
+                : await MsmqService.GetMessageByIdAsync(message.QueuePath, message.Id, cancellationToken: request.Token);
+            request.Token.ThrowIfCancellationRequested();
+            if (result.Success && result.Data != null)
+            {
+                SelectedMessage = result.Data;
+                IsDetailDrawerOpen = true;
+            }
+            else ShowOperationFeedback(result.ErrorMessage ?? "The message is no longer available.", false);
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            if (ReferenceEquals(_detailRequest, request)) _detailRequest = null;
+            if (!_disposed) StateHasChanged();
+        }
     }
 
     /// <summary>
@@ -778,6 +808,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     /// </summary>
     protected async Task CloseDetailDrawerAsync()
     {
+        _detailRequest?.Cancel();
         IsDetailDrawerOpen = false;
         SelectedMessage = null;
         StateHasChanged();
@@ -1042,7 +1073,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     protected async Task ConnectToUrlHostAsync()
     {
         var computerName = GetComputerNameFromCurrentUrl();
-        var result = await ConnectionManager.ConnectAsync(computerName, displayName: computerName);
+        var result = await ConnectionManager.ConnectAsync(computerName, displayName: computerName, cancellationToken: _lifetime.Token);
 
         if (result.Success && result.Data != null)
         {
@@ -1076,7 +1107,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     /// </summary>
     protected async Task ConnectToLocalhostAsync()
     {
-        var result = await ConnectionManager.ConnectAsync("localhost", displayName: "localhost");
+        var result = await ConnectionManager.ConnectAsync("localhost", displayName: "localhost", cancellationToken: _lifetime.Token);
         if (result.Success && result.Data != null)
         {
             CurrentConnection = result.Data;
@@ -1097,7 +1128,7 @@ public class HomeBase : ComponentBase, IAsyncDisposable
         try
         {
             // Attempt connection via ConnectionManager
-            var result = await ConnectionManager.ConnectAsync(computerName);
+            var result = await ConnectionManager.ConnectAsync(computerName, cancellationToken: _lifetime.Token);
 
             if (result.Success && result.Data != null)
             {
@@ -1145,6 +1176,9 @@ public class HomeBase : ComponentBase, IAsyncDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        ConnectionManager.ConnectionRefreshed -= OnConnectionRefreshed;
+        _lifetime.Cancel();
+        _lifetime.Dispose();
 
         // Clean up JS interop
         if (_dotNetRef != null)
@@ -1174,9 +1208,4 @@ public class HomeBase : ComponentBase, IAsyncDisposable
         Purge
     }
 
-    private static bool ShouldSkipJournalLookup(QueueInfo queue)
-    {
-        return string.IsNullOrWhiteSpace(queue.Path)
-               || JournalLookupExclusionQueueTypes.Contains(queue.QueueType);
-    }
 }

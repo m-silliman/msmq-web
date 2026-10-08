@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MsMqApp.Models.Domain;
 using MsMqApp.Models.Enums;
-using System.Text;
 
 namespace MsMqApp.Components.Shared;
 
@@ -16,7 +15,6 @@ public class MessageBodyViewerBase : ComponentBase, IAsyncDisposable
     private bool _showCopySuccess;
     private System.Timers.Timer? _copySuccessTimer;
     private const int CopySuccessDisplayMs = 2000;
-    private const int MaxDisplaySizeBytes = 1024 * 1024; // 1MB default
 
     /// <summary>
     /// Gets or sets the JSRuntime for JavaScript interop.
@@ -47,13 +45,6 @@ public class MessageBodyViewerBase : ComponentBase, IAsyncDisposable
     /// </summary>
     [Parameter]
     public bool ShowMetadata { get; set; } = true;
-
-    /// <summary>
-    /// Gets or sets the maximum display size in bytes. Content larger than this will be truncated.
-    /// Default is 1MB.
-    /// </summary>
-    [Parameter]
-    public int MaxDisplaySize { get; set; } = MaxDisplaySizeBytes;
 
     /// <summary>
     /// Gets or sets the CSS class for the component container.
@@ -100,29 +91,17 @@ public class MessageBodyViewerBase : ComponentBase, IAsyncDisposable
     protected bool ShowCopySuccess => _showCopySuccess;
 
     /// <summary>
-    /// Gets whether the content is truncated.
-    /// </summary>
-    protected bool IsTruncated { get; private set; }
-
-    /// <summary>
     /// Gets the formatted content for display.
     /// </summary>
     protected string FormattedContent { get; private set; } = string.Empty;
+
+    protected bool HasContent => MessageBody != null &&
+        (!string.IsNullOrEmpty(MessageBody.RawContent) || MessageBody.RawBytes?.Length > 0);
 
     /// <summary>
     /// Gets the formatted size string.
     /// </summary>
     protected string FormattedSize => FormatBytes(MessageBody?.SizeBytes ?? 0);
-
-    /// <summary>
-    /// Gets the formatted original size (for truncated content).
-    /// </summary>
-    protected string FormattedOriginalSize => FormatBytes(MessageBody?.SizeBytes ?? 0);
-
-    /// <summary>
-    /// Gets the max display size in KB for display purposes.
-    /// </summary>
-    protected int MaxDisplaySizeKB => MaxDisplaySize / 1024;
 
     /// <summary>
     /// Gets a unique ID for the format selector.
@@ -141,44 +120,23 @@ public class MessageBodyViewerBase : ComponentBase, IAsyncDisposable
     /// </summary>
     private void UpdateFormattedContent()
     {
-        if (MessageBody == null || string.IsNullOrWhiteSpace(MessageBody.RawContent))
+        if (!HasContent)
         {
             FormattedContent = string.Empty;
-            IsTruncated = false;
             return;
         }
 
         // Determine the effective format
         var effectiveFormat = _selectedFormat == MessageBodyFormat.Unknown
-            ? MessageBody.DetectFormat()
+            ? MessageBody!.DetectFormat()
             : _selectedFormat;
 
-        // Check if we need to truncate
-        var originalSize = MessageBody.SizeBytes;
-        IsTruncated = originalSize > MaxDisplaySize;
-
-        // Get the content to format
-        string contentToFormat;
-        if (IsTruncated)
-        {
-            // Truncate the raw content before formatting
-            var bytes = Encoding.UTF8.GetBytes(MessageBody.RawContent);
-            var truncatedBytes = bytes.Take(MaxDisplaySize).ToArray();
-            contentToFormat = Encoding.UTF8.GetString(truncatedBytes);
-        }
-        else
-        {
-            contentToFormat = MessageBody.RawContent;
-        }
-
         // Create a temporary MessageBody for formatting
-        var tempBody = new MessageBody(contentToFormat)
+        var tempBody = new MessageBody(MessageBody!.RawContent)
         {
             Format = effectiveFormat,
             Encoding = MessageBody.Encoding,
-            RawBytes = MessageBody.RawBytes != null && IsTruncated
-                ? MessageBody.RawBytes.Take(MaxDisplaySize).ToArray()
-                : MessageBody.RawBytes
+            RawBytes = MessageBody.RawBytes
         };
 
         FormattedContent = tempBody.GetFormattedContent();
@@ -267,7 +225,7 @@ public class MessageBodyViewerBase : ComponentBase, IAsyncDisposable
     /// </summary>
     protected async Task CopyToClipboardAsync()
     {
-        if (string.IsNullOrWhiteSpace(FormattedContent) || IsCopying)
+        if (string.IsNullOrEmpty(FormattedContent) || IsCopying)
         {
             return;
         }

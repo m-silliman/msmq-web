@@ -14,11 +14,11 @@
                     <span class="view-type-label">@GetViewTypeText()</span>
                     @if (ViewType == Models.Enums.QueueViewType.QueueMessages)
                     {
-                        <span class="queue-count badge bg-secondary ms-2">@SelectedQueue.MessageCount</span>
+                        <span class="queue-count badge bg-secondary ms-2">@SelectedQueue.MessageCountText</span>
                     }
                     else if (ViewType == Models.Enums.QueueViewType.JournalMessages)
                     {
-                        <span class="queue-count badge bg-info ms-2">@SelectedQueue.JournalMessageCount</span>
+                        <span class="queue-count badge bg-info ms-2">@SelectedQueue.JournalMessageCountText</span>
                     }
                 </div>
                 @if (SelectedQueue.QueueType != Models.Enums.QueueType.Private)
@@ -106,8 +106,8 @@
                     <div class="message-grid-cell message-cell-arrived" @onclick='() => ToggleSortAsync("ArrivedTime")'>
                         Arrived @GetSortIcon("ArrivedTime")
                     </div>
-                    <div class="message-grid-cell message-cell-size" @onclick='() => ToggleSortAsync("Size")'>
-                        Size @GetSortIcon("Size")
+                    <div class="message-grid-cell message-cell-size" title="Body size is available when a message is selected">
+                        Size
                     </div>
                 </div>
 

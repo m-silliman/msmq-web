@@ -7,6 +7,8 @@ namespace MsMqApp.Models.Domain;
 /// </summary>
 public class QueueMessage
 {
+    /// <summary>False for metadata-only list rows; details load the body on demand.</summary>
+    public bool IsBodyLoaded { get; set; } = true;
     /// <summary>
     /// Gets or sets the unique message identifier
     /// </summary>
@@ -198,6 +200,7 @@ public class QueueMessage
     {
         get
         {
+            if (!IsBodyLoaded) return "Not loaded";
             var bytes = Body.SizeBytes;
             if (bytes < 1024)
                 return $"{bytes} B";
@@ -241,6 +244,7 @@ public class QueueMessage
         return new QueueMessage
         {
             Id = Id,
+            IsBodyLoaded = IsBodyLoaded,
             Label = Label,
             Body = Body,
             QueuePath = QueuePath,

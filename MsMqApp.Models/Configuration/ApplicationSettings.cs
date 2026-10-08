@@ -11,11 +11,6 @@ public class ApplicationSettings
     public int DefaultRefreshIntervalSeconds { get; set; } = 5;
 
     /// <summary>
-    /// Gets or sets the maximum message body size in bytes
-    /// </summary>
-    public int MaxMessageBodySizeBytes { get; set; } = 1048576; // 1 MB
-
-    /// <summary>
     /// Gets or sets the message list page size
     /// </summary>
     public int MessageListPageSize { get; set; } = 100;
