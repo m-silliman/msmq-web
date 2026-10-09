@@ -26,17 +26,6 @@
                 // Apply theme immediately to prevent flash
                 document.documentElement.setAttribute('data-bs-theme', theme);
                 
-                // Set CSS custom properties immediately for instant effect
-                if (theme === 'dark') {
-                    document.documentElement.style.setProperty('--bs-body-bg', '#212529');
-                    document.documentElement.style.setProperty('--bs-body-color', '#ffffff');
-                    document.documentElement.style.setProperty('--bs-border-color', '#495057');
-                } else {
-                    document.documentElement.style.setProperty('--bs-body-bg', '#ffffff');
-                    document.documentElement.style.setProperty('--bs-body-color', '#212529');
-                    document.documentElement.style.setProperty('--bs-border-color', '#dee2e6');
-                }
-                
                 // Also add theme class to body for additional compatibility
                 if (document.body) {
                     document.body.classList.remove('theme-light', 'theme-dark');

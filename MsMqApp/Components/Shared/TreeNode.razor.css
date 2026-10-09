@@ -24,7 +24,7 @@
 }
 
 .tree-node-content:focus {
-    outline: 2px solid #258cfb;
+    outline: 2px solid var(--app-color-primary);
     outline-offset: -2px;
 }
 
@@ -60,7 +60,7 @@
 }
 
 .tree-node-toggle:focus {
-    outline: 2px solid #258cfb;
+    outline: 2px solid var(--app-color-primary);
     outline-offset: 2px;
     border-radius: 0.125rem;
 }
@@ -127,7 +127,7 @@
 
 /* Light Mode - Ensure badge text is white for contrast */
 [data-bs-theme="light"] .tree-node-badge {
-    color: #ffffff !important;
+    color: var(--nav-active-text) !important;
 }
 
 /* Reduced Motion Support */
@@ -146,11 +146,11 @@
 
 /* Focus visible for keyboard navigation */
 .tree-node-content:focus-visible {
-    outline: 2px solid #258cfb;
+    outline: 2px solid var(--app-color-primary);
     outline-offset: -2px;
 }
 
 .tree-node-toggle:focus-visible {
-    outline: 2px solid #258cfb;
+    outline: 2px solid var(--app-color-primary);
     outline-offset: 2px;
 }

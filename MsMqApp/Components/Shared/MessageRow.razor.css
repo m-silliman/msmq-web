@@ -22,7 +22,7 @@
 }
 
 .message-row:focus {
-    outline: 2px solid #258cfb;
+    outline: 2px solid var(--app-color-primary);
     outline-offset: -2px;
 }
 
@@ -37,7 +37,7 @@
 }
 
 .message-row-checked {
-    background-color: rgba(13, 110, 253, 0.05);
+    background-color: rgba(var(--bs-primary-rgb), 0.05);
 }
 
 .message-row-expired {
@@ -157,7 +157,7 @@
 [data-bs-theme="light"] .message-cell-priority .badge.bg-info,
 [data-bs-theme="light"] .message-cell-priority .badge.bg-success,
 [data-bs-theme="light"] .message-cell-priority .badge.bg-danger {
-    color: #ffffff !important;
+    color: var(--nav-active-text) !important;
 }
 
 /* Reduced Motion Support */
@@ -169,5 +169,5 @@
 
 /* Dark Mode Adjustments */
 [data-bs-theme="dark"] .message-row-checked {
-    background-color: rgba(13, 110, 253, 0.15);
+    background-color: rgba(var(--bs-primary-rgb), 0.15);
 }
