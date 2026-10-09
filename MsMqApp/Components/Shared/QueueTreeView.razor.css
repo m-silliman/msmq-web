@@ -28,7 +28,7 @@
 }
 
 .queue-tree-filter {
-    padding: 0 1rem 0.75rem 1rem;
+    padding: 0.5rem 1rem 0.75rem 1rem;
     background-color: var(--app-bg-secondary);
     border-bottom: 1px solid var(--app-border-color);
 }

@@ -8,14 +8,18 @@
 [data-bs-theme="light"] {
     color-scheme: light;
 
+    --app-brand-g1: #a1dd00;
+    --app-brand-g3: #00532a;
     --app-color-primary: #1d428a;
     --app-color-primary-hover: #0e2961;
     --app-color-primary-active: #001428;
     --app-color-primary-soft: #eef2f8;
     --app-color-primary-border: #91a2c4;
-    --app-color-accent: #a1dd00;
-    --app-color-success: #00532a;
+    --app-color-accent: var(--app-brand-g1);
+    --app-color-accent-rgb: 161, 221, 0;
+    --app-color-success: var(--app-brand-g3);
     --app-color-success-rgb: 0, 83, 42;
+    --app-color-success-surface-rgb: 0, 83, 42;
     --app-color-warning: #df7e26;
     --app-color-warning-rgb: 223, 126, 38;
     --app-color-warning-text: #6b4700;
@@ -28,7 +32,7 @@
     --app-bg-secondary: #ffffff;
     --app-bg-tertiary: #f4f6f8;
     --app-bg-hover: #eef2f8;
-    --app-bg-active: #e8eef8;
+    --app-bg-active: rgba(var(--app-color-accent-rgb), 0.14);
     --app-text-primary: #001428;
     --app-text-secondary: #4b5559;
     --app-text-muted: #6b7377;
@@ -38,7 +42,7 @@
     --app-shadow-lg: 0 0.5rem 1rem rgba(0, 20, 40, 0.18);
     --app-overlay: rgba(0, 20, 40, 0.62);
 
-    --app-focus-ring: 0 0 0 0.18rem rgba(161, 221, 0, 0.48);
+    --app-focus-ring: 0 0 0 0.18rem rgba(var(--app-color-accent-rgb), 0.48);
     --app-input-focus-background: #fff3a3;
     --app-input-focus-text: #001428;
 
@@ -55,7 +59,7 @@
     --bs-link-color: var(--app-color-primary);
     --bs-link-color-rgb: 29, 66, 138;
     --bs-link-hover-color: var(--app-color-primary-hover);
-    --bs-focus-ring-color: rgba(161, 221, 0, 0.48);
+    --bs-focus-ring-color: rgba(var(--app-color-accent-rgb), 0.48);
     --bs-body-color: var(--app-text-primary);
     --bs-body-bg: var(--app-bg-primary);
     --bs-secondary-color: var(--app-text-secondary);
@@ -68,13 +72,16 @@
 [data-bs-theme="dark"] {
     color-scheme: dark;
 
+    --app-color-accent: var(--app-brand-g1);
+    --app-color-accent-rgb: 161, 221, 0;
     --app-color-primary: #3f73c8;
     --app-color-primary-hover: #5f8ed8;
     --app-color-primary-active: #7aa4e4;
     --app-color-primary-soft: #172a40;
     --app-color-primary-border: #5f83ad;
-    --app-color-success: #237b4b;
-    --app-color-success-rgb: 35, 123, 75;
+    --app-color-success: #68d391;
+    --app-color-success-rgb: 104, 211, 145;
+    --app-color-success-surface-rgb: 0, 83, 42;
     --app-color-warning: #f0a34f;
     --app-color-warning-rgb: 240, 163, 79;
     --app-color-warning-text: #f4bd7d;
@@ -83,11 +90,11 @@
     --app-color-danger-hover: #ff9ca7;
     --app-color-danger-active: #ffb6bf;
 
-    --app-bg-primary: #07121f;
-    --app-bg-secondary: #101f31;
-    --app-bg-tertiary: #172a40;
-    --app-bg-hover: #1d3550;
-    --app-bg-active: #243f5d;
+    --app-bg-primary: #040b14;
+    --app-bg-secondary: #0b1724;
+    --app-bg-tertiary: #142538;
+    --app-bg-hover: #1a3147;
+    --app-bg-active: rgba(var(--app-color-accent-rgb), 0.16);
     --app-text-primary: #f4f7fb;
     --app-text-secondary: #aab7c4;
     --app-text-muted: #8190a0;
@@ -105,13 +112,13 @@
     --nav-icon-color: var(--app-color-primary-active);
 
     --bs-body-color-rgb: 244, 247, 251;
-    --bs-body-bg-rgb: 7, 18, 31;
+    --bs-body-bg-rgb: 4, 11, 20;
     --bs-primary-rgb: 63, 115, 200;
     --bs-link-color-rgb: 63, 115, 200;
     --bs-emphasis-color: #ffffff;
     --bs-emphasis-color-rgb: 255, 255, 255;
     --bs-tertiary-color: var(--app-text-muted);
-    --bs-tertiary-bg: #0d1b2a;
+    --bs-tertiary-bg: #0b1724;
     --bs-border-color-translucent: rgba(244, 247, 251, 0.16);
 }
 
@@ -499,8 +506,8 @@ h1:focus {
 }
 
 .header-success {
-    background-color: rgba(var(--app-color-success-rgb), 0.1);
-    border-bottom-color: rgba(var(--app-color-success-rgb), 0.3);
+    background-color: rgba(var(--app-color-success-surface-rgb), 0.12);
+    border-bottom-color: rgba(var(--app-color-success-surface-rgb), 0.3);
 }
 
 .header-success .dialog-header-icon {
@@ -771,7 +778,7 @@ body.drawer-open {
 
 .nav-link:hover i {
     transform: scale(1.1);
-    color: var(--app-color-primary-hover);
+    color: var(--app-color-accent);
 }
 
 .nav-link.active {
@@ -809,7 +816,7 @@ body.drawer-open {
 }
 
 .resize-handle:hover {
-    background-color: var(--app-color-primary);
+    background-color: var(--app-color-accent);
 }
 
 .resize-handle:hover .resize-handle-bar {
@@ -1157,7 +1164,7 @@ body.drawer-open {
 }
 
 .panel-splitter:hover {
-    background-color: var(--app-color-primary);
+    background-color: var(--app-color-accent);
 }
 
 .panel-splitter:active {
