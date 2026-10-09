@@ -39,6 +39,15 @@
                 <span class="visually-hidden">Search syntax help</span>
             </button>
 
+            <button type="button"
+                    class="search-help-button"
+                    @onclick="ShowCustomColumns"
+                    disabled="@(SelectedQueue == null || _customProfileLoadRequested)"
+                    title="Manage custom message columns">
+                <i class="bi bi-layout-three-columns" aria-hidden="true"></i>
+                <span class="visually-hidden">Manage custom message columns</span>
+            </button>
+
             <div class="message-list-search">
                 <i class="bi bi-search search-icon" aria-hidden="true"></i>
                 <input type="text"
@@ -156,7 +165,7 @@
         else
         {
             <div class="message-list-grid" @key="ListVersion" tabindex="0" aria-label="Messages">
-                <div class="message-grid-header">
+                <div class="message-grid-header" style="grid-template-columns: @GetGridTemplateColumns()">
                     <div class="message-grid-cell message-cell-select">
                         <input type="checkbox"
                                class="form-check-input"
@@ -178,6 +187,12 @@
                     <div class="message-grid-cell message-cell-arrived" @onclick='() => ToggleSortAsync("ArrivedTime")'>
                         Arrived @GetSortIcon("ArrivedTime")
                     </div>
+                    @foreach (var column in VisibleCustomColumns)
+                    {
+                        <div class="message-grid-cell custom-message-column-header" title="@column.JsonPath">
+                            @column.Header
+                        </div>
+                    }
                 </div>
 
                 <Virtualize Items="@FilteredMessages" Context="message" OverscanCount="10">
@@ -186,6 +201,9 @@
                                 IsChecked="@IsMessageSelected(message)"
                                 ShowId="false"
                                 ShowStandardColumns="true"
+                                CustomColumns="@VisibleCustomColumns"
+                                CustomValues="@GetCustomValues(message)"
+                                GridTemplateColumns="@GetGridTemplateColumns()"
                                 OnRowClick="@SelectMessageAsync"
                                 OnCheckboxChanged="@ToggleMessageSelectionAsync" />
                 </Virtualize>
@@ -277,3 +295,7 @@
                       ErrorMessage="@ExportErrorMessage"
                       OnConfirm="ExportSelectedMessagesAsync"
                       OnCancel="HandleExportCancellationAsync" />
+
+<CustomColumnsDialog @bind-IsOpen="ShowCustomColumnsDialog"
+                     Profile="@DialogProfile"
+                     OnSave="@HandleCustomColumnsSavedAsync" />

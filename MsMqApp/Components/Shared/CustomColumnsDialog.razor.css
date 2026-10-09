@@ -1,0 +1,42 @@
+.custom-columns-dialog {
+    width: min(860px, calc(100vw - 2rem));
+    max-width: 860px;
+}
+
+.custom-columns-body {
+    max-height: min(70vh, 650px);
+    overflow-y: auto;
+}
+
+.custom-columns-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.custom-column-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--app-border-color);
+    border-radius: 0.25rem;
+}
+
+.custom-column-item + .custom-column-item {
+    margin-top: 0.375rem;
+}
+
+.custom-column-description {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.custom-column-description code {
+    overflow: hidden;
+    color: var(--app-text-secondary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+

@@ -1,0 +1,91 @@
+@namespace MsMqApp.Components.Shared
+@inherits CustomColumnsDialogBase
+
+@if (IsOpen)
+{
+    <div class="confirmation-dialog-backdrop show" @onclick="CloseFromBackdropAsync"></div>
+
+    <div class="confirmation-dialog custom-columns-dialog show"
+         role="dialog"
+         aria-labelledby="@DialogTitleId"
+         aria-modal="true">
+        <div class="confirmation-dialog-header header-info">
+            <div class="dialog-header-icon">
+                <i class="bi bi-layout-three-columns" aria-hidden="true"></i>
+            </div>
+            <h5 class="dialog-title" id="@DialogTitleId">Custom Message Columns</h5>
+            <button type="button" class="btn-close" @onclick="CancelAsync" aria-label="Close"></button>
+        </div>
+
+        <div class="confirmation-dialog-body custom-columns-body">
+            <p class="text-muted small mb-3">
+                Add columns from JSON message data. Missing paths and non-JSON messages remain blank.
+            </p>
+
+            <div class="custom-columns-actions mb-3">
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="ShowAll">
+                    <i class="bi bi-eye me-1" aria-hidden="true"></i>Show All
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="HideAll">
+                    <i class="bi bi-eye-slash me-1" aria-hidden="true"></i>Hide All
+                </button>
+            </div>
+
+            @if (DraftColumns.Count == 0)
+            {
+                <div class="alert alert-secondary small">No custom columns have been configured.</div>
+            }
+            else
+            {
+                <div class="custom-columns-list">
+                    @foreach (var column in DraftColumns.OrderBy(column => column.Order))
+                    {
+                        <div class="custom-column-item">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   checked="@column.IsVisible"
+                                   @onchange="args => SetVisibility(column, args)"
+                                   aria-label="Show @column.Header" />
+                            <div class="custom-column-description">
+                                <strong>@column.Header</strong>
+                                <code>@column.JsonPath</code>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link" @onclick="() => BeginEdit(column)">Edit</button>
+                            <button type="button" class="btn btn-sm btn-link text-danger" @onclick="() => Remove(column)">Remove</button>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="custom-column-editor mt-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label" for="custom-column-header">Header</label>
+                        <input id="custom-column-header" class="form-control form-control-sm" @bind="Header" placeholder="Message Name" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="custom-column-path">JSON path</label>
+                        <input id="custom-column-path" class="form-control form-control-sm" @bind="JsonPath" placeholder="Header.MessageName or MessageBody.Elements[0].ItemIdent" />
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-sm btn-primary w-100" @onclick="SaveColumn">
+                            @(EditingId.HasValue ? "Update" : "Add")
+                        </button>
+                    </div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="text-danger small mt-2" role="alert">@ErrorMessage</div>
+                }
+            </div>
+        </div>
+
+        <div class="confirmation-dialog-footer">
+            <button type="button" class="btn btn-secondary" @onclick="CancelAsync">Cancel</button>
+            <button type="button" class="btn btn-primary" @onclick="SaveAsync">
+                <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Save
+            </button>
+        </div>
+    </div>
+}
+

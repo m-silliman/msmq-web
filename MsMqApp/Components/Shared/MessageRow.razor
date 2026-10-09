@@ -1,7 +1,7 @@
 @namespace MsMqApp.Components.Shared
 @inherits MessageRowBase
 
-<div class="message-row @(ShowStandardColumns ? "message-row-with-standard-columns" : string.Empty) @GetRowClass()" @onclick="OnRowClickAsync">
+<div class="message-row @(ShowStandardColumns ? "message-row-with-standard-columns" : string.Empty) @GetRowClass()" style="@GetGridStyle()" @onclick="OnRowClickAsync">
     <div class="message-row-cell message-cell-select" @onclick:stopPropagation="true">
         <input type="checkbox"
                class="form-check-input"
@@ -38,5 +38,12 @@
     <div class="message-row-cell message-cell-arrived" title="@Message.ArrivedTime.ToString("yyyy-MM-dd HH:mm:ss")">
         @GetFormattedTime()
     </div>
+
+    @foreach (var column in CustomColumns)
+    {
+        <div class="message-row-cell custom-message-column-cell" title="@GetCustomValue(column)">
+            <span class="custom-message-column-text">@GetCustomValue(column)</span>
+        </div>
+    }
 
 </div>

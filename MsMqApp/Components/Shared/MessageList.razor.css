@@ -299,6 +299,15 @@
     color: inherit;
 }
 
+.custom-message-column-header {
+    cursor: default !important;
+    min-width: 0;
+}
+
+.custom-message-column-header:hover {
+    color: inherit !important;
+}
+
 .message-grid-header .message-cell-size {
     justify-content: flex-end;
     text-align: right;

@@ -92,6 +92,7 @@ builder.Services.AddScoped<IQueueManagementService, QueueManagementService>();
 // Register UI services
 builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<IUiStateService, UiStateService>();
+builder.Services.AddScoped<ICustomColumnProfileStore, CustomColumnProfileStore>();
 
 // Configure SignalR for Blazor Server
 builder.Services.AddSignalR(options =>

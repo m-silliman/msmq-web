@@ -1,8 +1,10 @@
 using System.IO.Compression;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using MsMqApp.Models.Configuration;
 using MsMqApp.Models.Domain;
 using MsMqApp.Models.Enums;
+using MsMqApp.Services.Helpers;
 using MsMqApp.Services.Interfaces;
 
 namespace MsMqApp.Components.Shared;
@@ -19,13 +21,20 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     private bool? _lastReadFromTail;
     private bool _loadingNextPage;
     private bool _isLoadingBodySearch;
+    private bool _isLoadingCustomColumnBodies;
+    protected bool _customProfileLoadRequested = true;
+    private bool _customBodyLoadRequested;
+    private string? _customProfileKey;
     private bool _disposed;
     private IJSObjectReference? _scrollModule;
     private DotNetObjectReference<MessageListBase>? _scrollReference;
+    private readonly Dictionary<string, IReadOnlyDictionary<Guid, string>> _customValueCache = new();
+    private CustomColumnProfile _customColumnProfile = new();
     protected ElementReference ListElement;
 
     [Inject] public IJSRuntime JSRuntime { get; set; } = default!;
     [Inject] public IMsmqService MsmqService { get; set; } = default!;
+    [Inject] public ICustomColumnProfileStore CustomColumnProfileStore { get; set; } = default!;
     [Parameter] public bool ReadFromTail { get; set; } = true;
     [Parameter] public EventCallback<bool> ReadFromTailChanged { get; set; }
     [Parameter] public int BatchSize { get; set; } = 100;
@@ -35,21 +44,34 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     [Parameter] public bool IsLoadingMore { get; set; }
     [Parameter] public string? PagingError { get; set; }
     [Parameter] public int ListVersion { get; set; }
+    [Parameter] public string? ServerName { get; set; }
 
     protected bool CanAutoLoad => HasMore && !IsLoading && !IsLoadingMore
         && PagingError == null && string.IsNullOrWhiteSpace(SearchQuery);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
-        try
+        if (firstRender)
         {
-            _scrollModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/message-list.js");
-            if (_disposed) { await _scrollModule.DisposeAsync(); return; }
-            _scrollReference = DotNetObjectReference.Create(this);
-            await _scrollModule.InvokeVoidAsync("attach", ListElement, _scrollReference);
+            try
+            {
+                _scrollModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/message-list.js");
+                if (_disposed) { await _scrollModule.DisposeAsync(); return; }
+                _scrollReference = DotNetObjectReference.Create(this);
+                await _scrollModule.InvokeVoidAsync("attach", ListElement, _scrollReference);
+            }
+            catch (JSDisconnectedException) { }
         }
-        catch (JSDisconnectedException) { }
+
+        if (_customProfileLoadRequested && SelectedQueue != null && !_disposed)
+        {
+            await LoadCustomColumnProfileAsync();
+        }
+
+        if (_customBodyLoadRequested && HasVisibleCustomColumns && !_disposed)
+        {
+            await LoadBodiesForCustomColumnsAsync();
+        }
     }
 
     protected Task ChangeBatchSizeAsync(ChangeEventArgs args)
@@ -168,6 +190,18 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     [Parameter]
     public QueueInfo? SelectedQueue { get; set; }
 
+    protected IReadOnlyList<CustomColumnDefinition> VisibleCustomColumns =>
+        _customColumnProfile.Columns
+            .Where(column => column.IsVisible)
+            .OrderBy(column => column.Order)
+            .ToList();
+
+    protected bool HasVisibleCustomColumns => VisibleCustomColumns.Count > 0;
+
+    protected bool ShowCustomColumnsDialog { get; set; }
+
+    protected CustomColumnProfile? DialogProfile { get; set; }
+
     /// <summary>
     /// Gets or sets the message operations service for performing bulk operations.
     /// </summary>
@@ -272,6 +306,16 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
+        var profileKey = GetCustomProfileKey();
+        if (!string.Equals(_customProfileKey, profileKey, StringComparison.OrdinalIgnoreCase))
+        {
+            _customProfileKey = profileKey;
+            _customColumnProfile = new CustomColumnProfile();
+            _customProfileLoadRequested = !string.IsNullOrEmpty(profileKey);
+            _customValueCache.Clear();
+        }
+
+        _customBodyLoadRequested = HasVisibleCustomColumns;
         if (_lastListVersion != ListVersion)
         {
             SelectedMessages.Clear();
@@ -417,6 +461,57 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     /// Shows or hides the search syntax help.
     /// </summary>
     protected void ToggleSearchHelp() => ShowSearchHelp = !ShowSearchHelp;
+
+    protected void ShowCustomColumns()
+    {
+        if (SelectedQueue == null || _customProfileLoadRequested)
+        {
+            return;
+        }
+
+        DialogProfile = CloneProfile(_customColumnProfile);
+        ShowCustomColumnsDialog = true;
+    }
+
+    protected async Task HandleCustomColumnsSavedAsync(CustomColumnProfile profile)
+    {
+        if (SelectedQueue == null)
+        {
+            return;
+        }
+
+        profile.ServerKey = GetServerKey();
+        profile.QueueKey = GetQueueKey();
+        _customColumnProfile = CloneProfile(profile);
+        _customValueCache.Clear();
+        _customBodyLoadRequested = HasVisibleCustomColumns;
+        await CustomColumnProfileStore.SaveAsync(_customColumnProfile);
+        StateHasChanged();
+    }
+
+    protected IReadOnlyDictionary<Guid, string> GetCustomValues(QueueMessage message)
+    {
+        if (!HasVisibleCustomColumns || string.IsNullOrEmpty(message.Id))
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        if (!_customValueCache.TryGetValue(message.Id, out var values))
+        {
+            values = CustomColumnJsonResolver.ResolveValues(message, VisibleCustomColumns);
+            _customValueCache[message.Id] = values;
+        }
+
+        return values;
+    }
+
+    protected string GetGridTemplateColumns()
+    {
+        var customColumns = HasVisibleCustomColumns
+            ? $" repeat({VisibleCustomColumns.Count}, minmax(120px, 1fr))"
+            : string.Empty;
+        return $"40px minmax(0, 1.2fr) minmax(0, 1.5fr) 90px 120px 150px{customColumns}";
+    }
 
     /// <summary>
     /// Enables or disables body search. Enabling it loads bodies for the messages already in the list.
@@ -1109,4 +1204,87 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
             _isLoadingBodySearch = false;
         }
     }
+
+    private async Task LoadCustomColumnProfileAsync()
+    {
+        _customProfileLoadRequested = false;
+        var serverKey = GetServerKey();
+        var queueKey = GetQueueKey();
+        if (string.IsNullOrEmpty(serverKey) || string.IsNullOrEmpty(queueKey))
+        {
+            return;
+        }
+
+        var profile = await CustomColumnProfileStore.GetAsync(serverKey, queueKey);
+        _customColumnProfile = profile ?? new CustomColumnProfile
+        {
+            ServerKey = serverKey,
+            QueueKey = queueKey
+        };
+        _customValueCache.Clear();
+        _customBodyLoadRequested = HasVisibleCustomColumns;
+        StateHasChanged();
+    }
+
+    private async Task LoadBodiesForCustomColumnsAsync()
+    {
+        if (_isLoadingBodySearch || _isLoadingCustomColumnBodies || MsmqService == null)
+        {
+            return;
+        }
+
+        _customBodyLoadRequested = false;
+        _isLoadingCustomColumnBodies = true;
+        var listVersion = ListVersion;
+        var messagesToLoad = Messages.Where(message => !message.IsBodyLoaded).ToList();
+        try
+        {
+            foreach (var message in messagesToLoad)
+            {
+                if (_disposed || listVersion != ListVersion)
+                {
+                    return;
+                }
+
+                var result = message.LookupId != 0
+                    ? await MsmqService.GetMessageByLookupIdAsync(message.QueuePath, message.LookupId)
+                    : await MsmqService.GetMessageByIdAsync(message.QueuePath, message.Id);
+
+                if (result.Success && result.Data != null)
+                {
+                    message.Body = result.Data.Body;
+                    message.IsBodyLoaded = true;
+                    _customValueCache.Remove(message.Id);
+                }
+            }
+        }
+        finally
+        {
+            _isLoadingCustomColumnBodies = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetCustomProfileKey() =>
+        $"{GetServerKey()}\u001f{GetQueueKey()}";
+
+    private string GetServerKey() =>
+        (string.IsNullOrWhiteSpace(ServerName) ? SelectedQueue?.ComputerName : ServerName)?.Trim() ?? string.Empty;
+
+    private string GetQueueKey() => SelectedQueue?.Path?.Trim() ?? string.Empty;
+
+    private static CustomColumnProfile CloneProfile(CustomColumnProfile profile) => new()
+    {
+        Version = profile.Version,
+        ServerKey = profile.ServerKey,
+        QueueKey = profile.QueueKey,
+        Columns = profile.Columns.Select(column => new CustomColumnDefinition
+        {
+            Id = column.Id == Guid.Empty ? Guid.NewGuid() : column.Id,
+            Header = column.Header,
+            JsonPath = column.JsonPath,
+            IsVisible = column.IsVisible,
+            Order = column.Order
+        }).ToList()
+    };
 }

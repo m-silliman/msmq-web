@@ -143,6 +143,17 @@
     font-variant-numeric: tabular-nums; /* Better number alignment */
 }
 
+.custom-message-column-cell {
+    min-width: 0;
+}
+
+.custom-message-column-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+}
+
 /* Ultra-compact mode for small screens */
 @media (max-height: 700px) {
     .message-row {

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using MsMqApp.Models.Configuration;
 using MsMqApp.Models.Domain;
 using MsMqApp.Models.Enums;
 
@@ -40,6 +41,23 @@ public class MessageRowBase : ComponentBase
     /// </summary>
     [Parameter]
     public bool ShowStandardColumns { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<CustomColumnDefinition> CustomColumns { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> CustomValues { get; set; } = new Dictionary<Guid, string>();
+
+    [Parameter]
+    public string? GridTemplateColumns { get; set; }
+
+    protected string GetGridStyle() =>
+        string.IsNullOrWhiteSpace(GridTemplateColumns)
+            ? string.Empty
+            : $"grid-template-columns: {GridTemplateColumns};";
+
+    protected string GetCustomValue(CustomColumnDefinition column) =>
+        CustomValues.TryGetValue(column.Id, out var value) ? value : string.Empty;
 
     /// <summary>
     /// Gets or sets the callback invoked when the row is clicked.
