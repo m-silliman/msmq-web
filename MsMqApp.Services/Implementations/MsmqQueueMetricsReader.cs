@@ -8,6 +8,10 @@ namespace MsMqApp.Services.Implementations;
 
 public sealed class MsmqQueueMetricsReader : IMsmqQueueMetricsReader
 {
+    private const uint MqErrorAccessDenied = 0xC00E0025;
+    private const uint MqErrorPrivilegeNotHeld = 0xC00E0026;
+    private const uint RpcAccessDenied = 0x00000005;
+
     // MQMGMTPROPS uses PROPVARIANT, whose vector union makes it 24 bytes on x64,
     // 16 on x86. Only scalar VT_UI4 values are requested; no native strings to free.
     public QueueMetrics Read(string computerName, string formatName)
@@ -81,7 +85,12 @@ public sealed class MsmqQueueMetricsReader : IMsmqQueueMetricsReader
             var result = MQMgmtGetInfo(local ? null : computerName, "QUEUE=" + formatName, ref props);
             // The caller can confirm inactive empty queues with a single read-only peek.
             if (result < 0)
+            {
+                var errorCode = unchecked((uint)result);
+                if (errorCode is MqErrorAccessDenied or MqErrorPrivilegeNotHeld or RpcAccessDenied)
+                    throw new UnauthorizedAccessException("Access denied while reading MSMQ queue counts.");
                 return new QueueMetrics(null, null);
+            }
             return new QueueMetrics(ReadCount(variants), ReadCount(variants + variantSize));
         }
         finally

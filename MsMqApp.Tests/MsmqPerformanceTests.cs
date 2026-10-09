@@ -215,6 +215,44 @@ public class MsmqPerformanceTests(ITestOutputHelper output)
         Assert.All(node.Children, child => Assert.Equal(0, child.BadgeCount));
     }
 
+    [Fact]
+    public void AccessDeniedCountsRemainUnknownAndMarkQueueUnavailable()
+    {
+        var queue = new QueueInfo
+        {
+            Id = "restricted",
+            Name = "restricted",
+            QueueType = MsMqApp.Models.Enums.QueueType.Private
+        };
+        queue.ApplyMetrics(new QueueMetrics(null, null), accessDenied: true);
+
+        var connection = new QueueConnection { Queues = [queue] };
+        var tree = MsMqApp.Models.UI.QueueTreeBuilder.BuildTreeFromConnection(connection);
+        var node = MsMqApp.Models.UI.QueueTreeBuilder.FindQueueNode(tree, queue.Id)!;
+
+        Assert.True(queue.IsAccessDenied);
+        Assert.False(queue.MessageCountKnown);
+        Assert.False(queue.JournalMessageCountKnown);
+        Assert.Null(node.BadgeCount);
+        Assert.Null(node.Children.Single(child => child.ViewType == MsMqApp.Models.Enums.QueueViewType.QueueMessages).BadgeCount);
+    }
+
+    [Fact]
+    public void FolderBadgeDoesNotShowPartialTotalsWhenAQueueIsUnavailable()
+    {
+        var counted = new QueueInfo { Id = "counted", Name = "counted", QueueType = MsMqApp.Models.Enums.QueueType.Private };
+        counted.ApplyMetrics(new QueueMetrics(4, 0));
+        var restricted = new QueueInfo { Id = "restricted", Name = "restricted", QueueType = MsMqApp.Models.Enums.QueueType.Private };
+        restricted.ApplyMetrics(new QueueMetrics(null, null), accessDenied: true);
+        var connection = new QueueConnection { Queues = [counted, restricted] };
+        var tree = MsMqApp.Models.UI.QueueTreeBuilder.BuildTreeFromConnection(connection);
+
+        MsMqApp.Models.UI.QueueTreeBuilder.UpdateBadgeCounts(tree, connection);
+
+        var folder = tree.Children.Single(child => child.ViewType == MsMqApp.Models.Enums.QueueViewType.Folder);
+        Assert.Null(folder.BadgeCount);
+    }
+
     [MsmqIntegrationFact]
     public void MissingQueueDoesNotReportZero()
     {

@@ -49,7 +49,8 @@
     <div class="home-content">
         <!-- Left Panel: Queue Tree View -->
         <div class="left-panel" style="@GetLeftPanelStyle()">
-            <QueueTreeView Connection="@CurrentConnection"
+            <QueueTreeView @ref="QueueTreeRef"
+                           Connection="@CurrentConnection"
                            SelectedQueue="@SelectedQueue"
                            CurrentViewType="@CurrentViewType"
                            OnNodeSelected="@HandleNodeSelectedAsync"

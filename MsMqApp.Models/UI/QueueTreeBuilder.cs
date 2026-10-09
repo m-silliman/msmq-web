@@ -320,7 +320,18 @@ public static class QueueTreeBuilder
         if (node.Children.Any())
         {
             var total = node.Children.Sum(child => UpdateNodeBadgeCounts(child, queues));
-            node.BadgeCount = total > 0 ? total : null;
+            if (node.ViewType == QueueViewType.Folder)
+            {
+                var folderQueues = node.Children
+                    .Select(child => child.Data)
+                    .OfType<QueueInfo>()
+                    .ToList();
+                node.BadgeCount = folderQueues.All(queue => queue.MessageCountKnown) ? total : null;
+            }
+            else
+            {
+                node.BadgeCount = total > 0 ? total : null;
+            }
             return total;
         }
 

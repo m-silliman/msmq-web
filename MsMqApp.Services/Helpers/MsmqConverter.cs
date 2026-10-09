@@ -67,10 +67,20 @@ internal static class MsmqConverter
         catch (Exception ex)
         {
             queueInfo.IsAccessible = false;
+            queueInfo.IsAccessDenied = IsAccessDenied(ex);
             queueInfo.ErrorMessage = ex.Message;
         }
 
         return queueInfo;
+    }
+
+    private static bool IsAccessDenied(Exception exception)
+    {
+        return exception is UnauthorizedAccessException
+            || exception is MessageQueueException messageQueueException
+                && messageQueueException.MessageQueueErrorCode == MessageQueueErrorCode.AccessDenied
+            || exception.Message.Contains("access denied", StringComparison.OrdinalIgnoreCase)
+            || exception.Message.Contains("insufficient security privileges", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

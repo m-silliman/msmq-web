@@ -134,12 +134,23 @@ public class QueueInfo
     public bool JournalMessageCountKnown { get; set; }
     public string JournalMessageCountText => JournalMessageCountKnown ? JournalMessageCount.ToString("N0") : "Unknown";
 
-    public void ApplyMetrics(QueueMetrics metrics)
+    public void ApplyMetrics(QueueMetrics metrics, bool accessDenied = false, string? errorMessage = null)
     {
         MessageCount = metrics.MessageCount ?? 0;
         MessageCountKnown = metrics.MessageCount.HasValue;
         JournalMessageCount = metrics.JournalMessageCount ?? 0;
         JournalMessageCountKnown = metrics.JournalMessageCount.HasValue;
+
+        IsAccessDenied = accessDenied;
+        if (accessDenied)
+        {
+            IsAccessible = false;
+            ErrorMessage = errorMessage ?? "Access denied while reading queue counts.";
+        }
+        else if (metrics.MessageCount.HasValue || metrics.JournalMessageCount.HasValue)
+        {
+            IsAccessDenied = false;
+        }
     }
 
     /// <summary>
@@ -191,6 +202,12 @@ public class QueueInfo
     /// Gets or sets whether the queue is currently accessible
     /// </summary>
     public bool IsAccessible { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether count retrieval failed because access was denied.
+    /// This is intentionally separate from transient count failures.
+    /// </summary>
+    public bool IsAccessDenied { get; set; }
 
     /// <summary>
     /// Gets or sets any error message if the queue is not accessible
@@ -256,6 +273,7 @@ public class QueueInfo
             MaximumQueueSize = MaximumQueueSize,
             MaximumJournalSize = MaximumJournalSize,
             IsAccessible = IsAccessible,
+            IsAccessDenied = IsAccessDenied,
             ErrorMessage = ErrorMessage
         };
     }

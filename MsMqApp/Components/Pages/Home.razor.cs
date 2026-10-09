@@ -27,6 +27,7 @@ private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues sup
     private DotNetObjectReference<HomeBase>? _dotNetRef;
     private QueueMessage? _pendingOperationMessage;
     private PendingOperation _pendingOperation = PendingOperation.None;
+    protected QueueTreeViewBase? QueueTreeRef { get; set; }
 
     // Panel sizing
     private const int MinLeftPanelWidth = 200;
@@ -136,8 +137,11 @@ private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues sup
                 var current = CurrentConnection.Queues.FirstOrDefault(q => q.Id == SelectedQueue.Id);
                 if (current != null)
                     SelectedQueue.ApplyMetrics(new QueueMetrics(current.MessageCountKnown ? current.MessageCount : null,
-                        current.JournalMessageCountKnown ? current.JournalMessageCount : null));
+                        current.JournalMessageCountKnown ? current.JournalMessageCount : null),
+                        current.IsAccessDenied,
+                        current.ErrorMessage);
             }
+            QueueTreeRef?.RefreshTree();
             StateHasChanged();
         });
     }

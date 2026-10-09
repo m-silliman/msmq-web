@@ -1,3 +1,4 @@
+using Experimental.System.Messaging;
 using Microsoft.Extensions.Logging;
 using MsMqApp.Models.Domain;
 using MsMqApp.Models.Enums;
@@ -49,8 +50,14 @@ public class QueueConnectionManager : IQueueConnectionManager, IDisposable
                     _msmqService.GetQueueMetricsAsync(connection.ComputerName, queue.FormatName, token)));
                 token.ThrowIfCancellationRequested();
                 for (var i = 0; i < batch.Length; i++)
-                    batch[i].ApplyMetrics(results[i].Success && results[i].Data != null
-                        ? results[i].Data! : new QueueMetrics(null, null));
+                {
+                    var result = results[i];
+                    batch[i].ApplyMetrics(result.Success && result.Data != null
+                        ? result.Data!
+                        : new QueueMetrics(null, null),
+                        IsAccessDenied(result),
+                        result.ErrorMessage);
+                }
                 NotifyEnriched(connection);
                 if (results.Any(r => r.Exception is TimeoutException)) break;
             }
@@ -425,6 +432,15 @@ private static bool IsLocalComputer(string computerName)
         }
 
         return computerName;
+    }
+
+    private static bool IsAccessDenied(OperationResult result)
+    {
+        return result.Exception is UnauthorizedAccessException
+            || result.Exception is MessageQueueException messageQueueException
+                && messageQueueException.MessageQueueErrorCode == MessageQueueErrorCode.AccessDenied
+            || result.ErrorMessage?.Contains("access denied", StringComparison.OrdinalIgnoreCase) == true
+            || result.ErrorMessage?.Contains("insufficient security privileges", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private static string GetFriendlyErrorMessage(string? errorMessage)

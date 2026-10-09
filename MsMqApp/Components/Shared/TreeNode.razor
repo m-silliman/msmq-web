@@ -30,7 +30,10 @@
             <i class="@NodeData.IconClass tree-node-icon" aria-hidden="true"></i>
         }
 
-        <span class="tree-node-text">@NodeData.Text</span>
+        <span class="tree-node-text @(NodeData.Data is MsMqApp.Models.Domain.QueueInfo queue && queue.IsAccessDenied ? "tree-node-text-unavailable" : string.Empty)"
+              title="@(NodeData.Data is MsMqApp.Models.Domain.QueueInfo accessQueue && accessQueue.IsAccessDenied ? "Access denied for this queue" : null)">
+            @NodeData.Text
+        </span>
 
         @if (NodeData.Data is MsMqApp.Models.Domain.QueueInfo countQueue)
         {
@@ -38,14 +41,17 @@
             var journalNotCounted = (NodeData.ViewType == MsMqApp.Models.Enums.QueueViewType.JournalMessages ||
                 (NodeData.ViewType == MsMqApp.Models.Enums.QueueViewType.Queue && !countQueue.IsSystemQueue && countQueue.QueueType != MsMqApp.Models.Enums.QueueType.Outgoing))
                 && !countQueue.JournalMessageCountKnown;
-            @if (queueNotCounted || journalNotCounted)
+            @if (queueNotCounted)
             {
-                var status = NodeData.ViewType == MsMqApp.Models.Enums.QueueViewType.Queue && queueNotCounted != journalNotCounted
-                    ? (queueNotCounted ? "Queue not counted" : "Journal not counted")
-                    : "Not counted";
-                <span class="tree-node-count-status"
-                      title="MSMQ has not reported a count. This does not indicate whether the queue is empty."
-                      aria-label="@status">@status</span>
+                <span class="tree-node-count-placeholder"
+                      title="@(countQueue.IsAccessDenied ? "Queue count unavailable because access was denied" : "Queue count is not available yet")"
+                      aria-label="@(countQueue.IsAccessDenied ? "Queue count unavailable" : "Queue count loading")">-</span>
+            }
+            @if (journalNotCounted)
+            {
+                <span class="tree-node-count-placeholder"
+                      title="@(countQueue.IsAccessDenied ? "Journal count unavailable because access was denied" : "Journal count is not available yet")"
+                      aria-label="@(countQueue.IsAccessDenied ? "Journal count unavailable" : "Journal count loading")">-</span>
             }
         }
 

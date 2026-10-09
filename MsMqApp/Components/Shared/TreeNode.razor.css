@@ -94,6 +94,11 @@
     line-height: 1.25rem;
 }
 
+.tree-node-text-unavailable {
+    color: var(--app-text-secondary);
+    font-style: italic;
+}
+
 /* Badge */
 .tree-node-badge {
     font-size: 0.75rem;
@@ -105,12 +110,14 @@
     text-align: center;
 }
 
-/* Unreported counts are status text, not numeric badges. */
-.tree-node-count-status {
+/* Unknown and unavailable counts use a compact placeholder. */
+.tree-node-count-placeholder {
     color: var(--app-text-secondary);
     font-size: 0.75rem;
     font-weight: 400;
     flex-shrink: 0;
+    min-width: 1.5rem;
+    text-align: center;
 }
 
 /* Children Container */

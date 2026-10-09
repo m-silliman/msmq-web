@@ -55,6 +55,11 @@ public class QueueDto
     public bool IsAccessible { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets whether count retrieval was denied by queue permissions.
+    /// </summary>
+    public bool IsAccessDenied { get; set; }
+
+    /// <summary>
     /// Gets or sets any error message
     /// </summary>
     public string? ErrorMessage { get; set; }
@@ -76,6 +81,7 @@ public class QueueDto
             IsTransactional = queueInfo.IsTransactional,
             ComputerName = queueInfo.ComputerName,
             IsAccessible = queueInfo.IsAccessible,
+            IsAccessDenied = queueInfo.IsAccessDenied,
             ErrorMessage = queueInfo.ErrorMessage
         };
     }
@@ -96,6 +102,7 @@ public class QueueDto
             IsTransactional = IsTransactional,
             ComputerName = ComputerName,
             IsAccessible = IsAccessible,
+            IsAccessDenied = IsAccessDenied,
             ErrorMessage = ErrorMessage
         };
     }
