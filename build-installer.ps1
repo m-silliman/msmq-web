@@ -43,7 +43,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Configuration
-$AppName = "MSMQ Manager"
+$AppName = "MSMQ-Manager"
 $AppDisplayName = "MSMQ Manager & Monitor"
 $ServiceName = "MSMQMonitor"
 $AppExe = "MsMqApp.exe"
