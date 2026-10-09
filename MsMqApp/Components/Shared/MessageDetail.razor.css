@@ -50,6 +50,7 @@
 
 /* Header */
 .message-detail-header {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -83,12 +84,16 @@
 /* Content */
 .message-detail-content {
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
     padding: 1.5rem;
 }
 
 /* Sections */
 .message-detail-section {
+    flex-shrink: 0;
     margin-bottom: 2rem;
 }
 
@@ -161,13 +166,42 @@
 }
 
 /* Message Body */
+.message-body-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 12rem;
+    min-height: 12rem;
+}
+
+.message-body-section > small {
+    flex-shrink: 0;
+}
+
 .message-body-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
     background-color: var(--app-bg-tertiary);
     border: 1px solid var(--app-border-color);
     border-radius: 0.375rem;
     padding: 1rem;
-    max-height: 400px;
-    overflow: auto;
+    overflow: hidden;
+}
+
+.message-body-container ::deep .message-body-viewer {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+
+.message-body-container ::deep .body-viewer-content {
+    min-height: 0;
+}
+
+.message-body-container ::deep .body-viewer-toolbar,
+.message-body-container ::deep .body-viewer-footer {
+    flex-shrink: 0;
 }
 
 .message-body-content {
