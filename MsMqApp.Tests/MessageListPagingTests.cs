@@ -1,0 +1,54 @@
+using Microsoft.AspNetCore.Components;
+using MsMqApp.Components.Shared;
+using MsMqApp.Models.Domain;
+
+namespace MsMqApp.Tests;
+
+public class MessageListPagingTests
+{
+    private sealed class ListHarness : MessageListBase
+    {
+        public void Apply() => OnParametersSet();
+        public void SetRows(List<QueueMessage> rows) => Messages = rows;
+        public void SetTail(bool tail) => ReadFromTail = tail;
+        public void SetHasMore(bool hasMore) => HasMore = hasMore;
+        public void SetLoadMore(Func<Task> callback) => OnLoadMore = EventCallback.Factory.Create(new object(), callback);
+        public List<QueueMessage> Rows => FilteredMessages;
+        public bool Paused => IsPaused;
+        public Task LoadNext() => LoadMoreAsync();
+    }
+
+    [Fact]
+    public void ChangingQueueEndChangesDefaultDisplayDirection()
+    {
+        var list = new ListHarness();
+        list.SetRows([new() { Label = "older", ArrivedTime = new DateTime(2026, 1, 1) },
+            new() { Label = "newer", ArrivedTime = new DateTime(2026, 1, 2) }]);
+        list.Apply();
+        Assert.Equal("newer", list.Rows[0].Label);
+        list.SetTail(false);
+        list.Apply();
+        Assert.Equal("older", list.Rows[0].Label);
+    }
+
+    [Fact]
+    public async Task RepeatedLoadMoreRequestsDoNotOverlapAndPauseAutoRefresh()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        var list = new ListHarness();
+        list.SetHasMore(true);
+        list.SetLoadMore(async () => { calls++; await release.Task; });
+        var first = list.LoadNext();
+        try
+        {
+            await list.LoadNext();
+            Assert.Equal(1, calls);
+            Assert.True(list.Paused);
+        }
+        finally { release.SetResult(); await first; }
+        list.SetHasMore(false);
+        await list.LoadNext();
+        Assert.Equal(1, calls);
+    }
+}

@@ -4,7 +4,7 @@
 
 .message-row {
     display: grid;
-    grid-template-columns: 40px 1fr 120px 150px 100px;
+    grid-template-columns: 40px minmax(0, 1fr) 120px 150px;
     gap: 0.5rem;
     padding: 0.25rem 0.75rem; /* Reduced padding for compact rows */
     border-bottom: 1px solid var(--app-border-color);
@@ -118,16 +118,6 @@
     font-variant-numeric: tabular-nums; /* Better number alignment */
 }
 
-.message-cell-size {
-    justify-content: flex-end;
-    color: var(--app-text-secondary);
-    font-family: 'Courier New', monospace;
-    font-size: 0.75rem; /* Smaller size font */
-    text-align: right;
-    font-variant-numeric: tabular-nums; /* Better number alignment */
-    font-weight: 500;
-}
-
 /* Ultra-compact mode for small screens */
 @media (max-height: 700px) {
     .message-row {
@@ -156,8 +146,7 @@
         min-width: 3rem;
     }
     
-    .message-cell-arrived,
-    .message-cell-size {
+    .message-cell-arrived {
         font-size: 0.7rem;
     }
 }

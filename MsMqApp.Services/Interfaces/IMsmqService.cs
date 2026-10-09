@@ -101,6 +101,13 @@ public interface IMsmqService
     #region Message Retrieval
 
     /// <summary>
+    /// Peeks a metadata-only page from either end of a normal or journal queue.
+    /// Continue using the returned lookup ID; an expired continuation requires refresh.
+    /// </summary>
+    Task<OperationResult<MessagePage>> GetMessagePageAsync(string queuePath, bool fromTail = false,
+        int maxMessages = 0, long? continuationLookupId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Retrieves bounded metadata-only rows without removing messages. Load a selected message separately for its body.
     /// </summary>
     /// <param name="queuePath">The full queue path</param>

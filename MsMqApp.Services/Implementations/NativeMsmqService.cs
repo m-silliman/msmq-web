@@ -438,6 +438,60 @@ public class NativeMsmqService : IMsmqService
 
     #region Message Retrieval
 
+    public Task<OperationResult<MessagePage>> GetMessagePageAsync(string queuePath, bool fromTail = false,
+        int maxMessages = 0, long? continuationLookupId = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(queuePath);
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            var actualPath = NormalizeQueuePathForMessageQueue(queuePath);
+            using var queue = new MessageQueue(actualPath);
+            var filter = queue.MessageReadPropertyFilter;
+            filter.ClearAll();
+            filter.Id = filter.LookupId = filter.Label = filter.Priority = filter.ArrivedTime = filter.SentTime = true;
+            filter.CorrelationId = filter.TimeToBeReceived = true;
+            QueueMessage? Peek(MessageLookupAction action, long lookupId)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Message message;
+                try
+                {
+                    message = queue.PeekByLookupId(action, lookupId);
+                }
+                catch (InvalidOperationException)
+                {
+                    // PeekByLookupId translates MQ_ERROR_MESSAGE_NOT_FOUND into
+                    // InvalidOperationException (including an empty queue/end of traversal).
+                    return null;
+                }
+                catch (MessageQueueException ex) when (ex.MessageQueueErrorCode == MessageQueueErrorCode.MessageNotFound)
+                {
+                    return null;
+                }
+                using (message)
+                {
+                    return new QueueMessage
+                    {
+                        Id = message.Id, LookupId = message.LookupId, Label = message.Label,
+                        CorrelationId = message.CorrelationId, TimeToBeReceived = message.TimeToBeReceived,
+                        Priority = (Models.Enums.MessagePriority)message.Priority,
+                        ArrivedTime = message.ArrivedTime, SentTime = message.SentTime,
+                        QueuePath = actualPath, IsBodyLoaded = false
+                    };
+                }
+            }
+            var page = MessagePageReader.Read(Peek, fromTail,
+                maxMessages > 0 ? maxMessages : Math.Max(1, _settings.MessageListPageSize),
+                continuationLookupId, cancellationToken);
+            return Task.FromResult(OperationResult<MessagePage>.Successful(page));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Task.FromResult(OperationResult<MessagePage>.Failure($"Failed to retrieve messages: {ex.Message}", ex));
+        }
+    }
+
     public Task<OperationResult<IEnumerable<QueueMessage>>> GetMessagesAsync(string queuePath,
         bool peekOnly = true, int maxMessages = 0, CancellationToken cancellationToken = default)
     {

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MsMqApp.Models.Domain;
 using MsMqApp.Models.Enums;
 using MsMqApp.Services.Interfaces;
@@ -8,11 +9,92 @@ namespace MsMqApp.Components.Shared;
 /// <summary>
 /// Component for displaying a virtualized list of MSMQ messages with sorting, filtering, and selection.
 /// </summary>
-public class MessageListBase : ComponentBase
+public class MessageListBase : ComponentBase, IAsyncDisposable
 {
     private string _searchQuery = string.Empty;
     private string _currentSortColumn = "ArrivedTime";
     private bool _sortAscending = false;
+    private int _lastListVersion = -1;
+    private bool? _lastReadFromTail;
+    private bool _loadingNextPage;
+    private bool _disposed;
+    private IJSObjectReference? _scrollModule;
+    private DotNetObjectReference<MessageListBase>? _scrollReference;
+    protected ElementReference ListElement;
+
+    [Inject] public IJSRuntime JSRuntime { get; set; } = default!;
+    [Parameter] public bool ReadFromTail { get; set; } = true;
+    [Parameter] public EventCallback<bool> ReadFromTailChanged { get; set; }
+    [Parameter] public int BatchSize { get; set; } = 100;
+    [Parameter] public EventCallback<int> BatchSizeChanged { get; set; }
+    [Parameter] public EventCallback OnLoadMore { get; set; }
+    [Parameter] public bool HasMore { get; set; }
+    [Parameter] public bool IsLoadingMore { get; set; }
+    [Parameter] public string? PagingError { get; set; }
+    [Parameter] public int ListVersion { get; set; }
+
+    protected bool CanAutoLoad => HasMore && !IsLoading && !IsLoadingMore
+        && PagingError == null && string.IsNullOrWhiteSpace(SearchQuery);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _scrollModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/message-list.js");
+            if (_disposed) { await _scrollModule.DisposeAsync(); return; }
+            _scrollReference = DotNetObjectReference.Create(this);
+            await _scrollModule.InvokeVoidAsync("attach", ListElement, _scrollReference);
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    protected async Task ChangeTailAsync(ChangeEventArgs args)
+    {
+        IsPaused = false;
+        await ReadFromTailChanged.InvokeAsync(args.Value is true);
+    }
+
+    protected Task ChangeBatchSizeAsync(ChangeEventArgs args)
+    {
+        return int.TryParse(args.Value?.ToString(), out var size) && size is 100 or 200 or 500
+            ? BatchSizeChanged.InvokeAsync(size)
+            : Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task BrowseMessagesAsync(int version, bool loadMore)
+    {
+        if (_disposed || version != ListVersion || IsLoading) return Task.CompletedTask;
+        IsPaused = true;
+        StateHasChanged();
+        return loadMore && CanAutoLoad ? LoadMoreAsync() : Task.CompletedTask;
+    }
+
+    protected async Task LoadMoreAsync()
+    {
+        if (_disposed || _loadingNextPage || IsLoading || IsLoadingMore || !HasMore) return;
+        _loadingNextPage = true;
+        IsPaused = true;
+        try { await OnLoadMore.InvokeAsync(); }
+        finally { _loadingNextPage = false; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        if (_scrollModule != null)
+        {
+            try
+            {
+                await _scrollModule.InvokeVoidAsync("detach", ListElement);
+                await _scrollModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+        _scrollReference?.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     /// <summary>
     /// Gets or sets the list of messages to display.
@@ -158,6 +240,17 @@ public class MessageListBase : ComponentBase
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
+        if (_lastListVersion != ListVersion)
+        {
+            SelectedMessages.Clear();
+            _lastListVersion = ListVersion;
+        }
+        if (_lastReadFromTail != ReadFromTail)
+        {
+            _currentSortColumn = "ArrivedTime";
+            _sortAscending = !ReadFromTail;
+            _lastReadFromTail = ReadFromTail;
+        }
         ApplyFilterAndSort();
     }
 
@@ -528,9 +621,6 @@ public class MessageListBase : ComponentBase
             "ArrivedTime" => _sortAscending
                 ? filtered.OrderBy(m => m.ArrivedTime)
                 : filtered.OrderByDescending(m => m.ArrivedTime),
-            "Size" => _sortAscending
-                ? filtered.OrderBy(m => m.Body.SizeBytes)
-                : filtered.OrderByDescending(m => m.Body.SizeBytes),
             _ => filtered.OrderByDescending(m => m.ArrivedTime)
         };
 

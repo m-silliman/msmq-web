@@ -54,6 +54,13 @@ private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues sup
     // UI State
     protected bool IsDetailDrawerOpen { get; set; }
     protected bool IsLoadingMessages { get; set; }
+    protected bool IsLoadingMoreMessages { get; set; }
+    protected bool HasMoreMessages { get; set; }
+    protected bool ReadFromTail { get; set; } = true;
+    protected int MessageBatchSize { get; set; } = 100;
+    protected string? MessagePagingError { get; set; }
+    protected int MessageListVersion { get; set; }
+    private long? _messageContinuation;
     protected bool IsLoadingQueueProperties { get; set; }
     protected string? QueuePropertiesError { get; set; }
     protected bool IsRefreshing { get; set; }
@@ -642,14 +649,23 @@ private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues sup
     /// <summary>
     /// Loads messages for the specified queue based on view type.
     /// </summary>
-    private async Task LoadMessagesAsync(string queuePath, QueueViewType viewType)
+    private async Task LoadMessagesAsync(string queuePath, QueueViewType viewType, bool append = false)
     {
         _listRequest?.Cancel();
         using var request = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         _listRequest = request;
         var requestToken = request.Token;
-        IsLoadingMessages = true;
-        Messages.Clear();
+        IsLoadingMoreMessages = append;
+        IsLoadingMessages = !append;
+        MessagePagingError = null;
+        if (!append)
+        {
+            MessageListVersion++;
+            HasMoreMessages = false;
+            _messageContinuation = null;
+            Messages.Clear();
+            SelectedMessages.Clear();
+        }
         StateHasChanged();
 
         try
@@ -667,30 +683,20 @@ private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues sup
                 return;
             }
 
-            OperationResult<IEnumerable<QueueMessage>> result;
-
-            if (viewType == QueueViewType.JournalMessages)
-            {
-                Console.WriteLine($"[DEBUG] Loading JOURNAL messages from: {queuePath}");
-                // Load journal messages
-                result = await MsmqService.GetJournalMessagesAsync(
-                    queuePath,
-                    maxMessages: 0, cancellationToken: requestToken);
-            }
-            else
-            {
-                Console.WriteLine($"[DEBUG] Loading REGULAR messages from: {queuePath}");
-                // Load regular queue messages
-                result = await MsmqService.GetMessagesAsync(
-                    queuePath,
-                    peekOnly: true,
-                    maxMessages: 0, cancellationToken: requestToken);
-            }
+            var result = await MsmqService.GetMessagePageAsync(queuePath, fromTail: ReadFromTail,
+                maxMessages: MessageBatchSize, continuationLookupId: append ? _messageContinuation : null,
+                cancellationToken: requestToken);
 
             requestToken.ThrowIfCancellationRequested();
             if (result.Success && result.Data != null)
             {
-                Messages = result.Data.ToList();
+                var page = result.Data;
+                var known = Messages.Select(m => m.LookupId).ToHashSet();
+                Messages.AddRange(page.Messages.Where(m => known.Add(m.LookupId)));
+                _messageContinuation = page.ContinuationLookupId;
+                HasMoreMessages = page.HasMore;
+                if (page.ContinuationExpired)
+                    MessagePagingError = "The queue changed while browsing. Refresh to read from the selected end again.";
                 Console.WriteLine($"[DEBUG] Successfully loaded {Messages.Count} messages");
             }
             else
@@ -698,7 +704,7 @@ private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues sup
                 // Log the error for debugging
                 Console.WriteLine($"Failed to load messages. ViewType: {viewType}, QueuePath: {queuePath}, Error: {result.ErrorMessage}");
                 ShowOperationFeedback(result.ErrorMessage ?? "Unable to load messages from this queue.", isSuccess: false);
-                Messages.Clear();
+                MessagePagingError = result.ErrorMessage ?? "Unable to load messages. Try again or refresh.";
             }
         }
         catch (OperationCanceledException) { }
@@ -706,7 +712,7 @@ private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues sup
         {
             Console.WriteLine($"Exception loading messages. ViewType: {viewType}, QueuePath: {queuePath}, Exception: {ex.Message}");
             ShowOperationFeedback($"Unable to load messages: {ex.Message}", isSuccess: false);
-            Messages.Clear();
+            MessagePagingError = $"Unable to load messages: {ex.Message}";
         }
         finally
         {
@@ -714,9 +720,26 @@ private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues sup
             {
                 _listRequest = null;
                 IsLoadingMessages = false;
+                IsLoadingMoreMessages = false;
                 if (!_disposed) StateHasChanged();
             }
         }
+    }
+
+    protected async Task ChangeReadFromTailAsync(bool fromTail)
+    {
+        ReadFromTail = fromTail;
+        await RefreshMessagesAsync();
+    }
+
+    protected Task LoadMoreMessagesAsync()
+    {
+        if (_disposed || _listRequest != null || !HasMoreMessages || SelectedQueue == null)
+            return Task.CompletedTask;
+        var queuePath = CurrentViewType == QueueViewType.JournalMessages
+            ? SelectedQueue.JournalPath
+            : (!string.IsNullOrEmpty(SelectedQueue.FormatName) ? SelectedQueue.FormatName : SelectedQueue.Path);
+        return LoadMessagesAsync(queuePath, CurrentViewType, append: true);
     }
 
     /// <summary>

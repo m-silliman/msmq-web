@@ -2,7 +2,7 @@
 @inherits MessageListBase
 @using Microsoft.AspNetCore.Components.Web.Virtualization
 
-<div class="message-list">
+<div class="message-list" @ref="ListElement" data-list-version="@ListVersion" data-auto-load="@(CanAutoLoad ? "true" : "false")">
     <div class="message-list-header">
         @if (SelectedQueue != null)
         {
@@ -33,7 +33,7 @@
                 <i class="bi bi-search search-icon" aria-hidden="true"></i>
                 <input type="text"
                        class="form-control form-control-sm"
-                       placeholder="Search messages..."
+                       placeholder="Search loaded messages..."
                        @bind="SearchQuery"
                        @bind:event="oninput"
                        @bind:after="OnSearchChangedAsync" />
@@ -47,6 +47,22 @@
                 }
             </div>
 
+            <label class="tail-option" title="Read from the end of the queue, including journal queues">
+                <input type="checkbox" class="form-check-input" checked="@ReadFromTail"
+                       @onchange="ChangeTailAsync" disabled="@(IsLoading || IsLoadingMore)" />
+                Show New Messages First
+            </label>
+
+            <label class="batch-size-option" title="Applies to the next load or refresh; keeps the messages already loaded">
+                Messages per load
+                <select class="form-select form-select-sm" value="@BatchSize"
+                        @onchange="ChangeBatchSizeAsync" disabled="@(IsLoading || IsLoadingMore)">
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                    <option value="500">500</option>
+                </select>
+            </label>
+
             <div class="message-list-info">
                 <small class="text-muted">
                     @GetMessageCountText()
@@ -54,9 +70,9 @@
             </div>
 
             <RefreshControl OnRefresh="@HandleRefreshAsync"
-                            AutoRefreshEnabled="@AutoRefreshEnabled"
+                            AutoRefreshEnabled="@(AutoRefreshEnabled && !IsLoadingMore)"
                             @bind-RefreshIntervalSeconds="@RefreshIntervalSeconds"
-                            IsRefreshing="@IsRefreshing"
+                            IsRefreshing="@(IsRefreshing || IsLoading || IsLoadingMore)"
                             @bind-IsPaused="@IsPaused"
                             ShowCountdown="true"
                             ShowRefreshLabel="false"
@@ -89,7 +105,7 @@
         }
         else
         {
-            <div class="message-list-grid">
+            <div class="message-list-grid" @key="ListVersion" tabindex="0" aria-label="Messages">
                 <div class="message-grid-header">
                     <div class="message-grid-cell message-cell-select">
                         <input type="checkbox"
@@ -106,9 +122,6 @@
                     <div class="message-grid-cell message-cell-arrived" @onclick='() => ToggleSortAsync("ArrivedTime")'>
                         Arrived @GetSortIcon("ArrivedTime")
                     </div>
-                    <div class="message-grid-cell message-cell-size" title="Body size is available when a message is selected">
-                        Size
-                    </div>
                 </div>
 
                 <Virtualize Items="@FilteredMessages" Context="message" OverscanCount="10">
@@ -122,6 +135,26 @@
             </div>
         }
     </div>
+
+    @if (!IsLoading && (HasMore || PagingError != null || IsPaused))
+    {
+        <div class="message-list-footer" aria-live="polite">
+            @if (PagingError != null)
+            {
+                <span class="text-warning">@PagingError</span>
+            }
+            @if (HasMore)
+            {
+                <button class="btn btn-sm btn-outline-secondary" @onclick="LoadMoreAsync" disabled="@IsLoadingMore">
+                    @(IsLoadingMore ? "Loading..." : $"Load next {BatchSize}")
+                </button>
+            }
+            @if (IsPaused)
+            {
+                <small class="text-muted ms-2">Live refresh paused to keep your place. Use the play button to resume.</small>
+            }
+        </div>
+    }
 
     @if (SelectedMessages.Count > 0)
     {

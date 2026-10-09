@@ -35,6 +35,9 @@ public sealed class MsmqService(NativeMsmqService native, MsmqOperationExecutor 
         Run(queuePath, ct => native.GetMessageCountAsync(queuePath, ct), cancellationToken);
     public Task<OperationResult<int>> GetJournalMessageCountAsync(string queuePath, CancellationToken cancellationToken = default) =>
         Run(queuePath, ct => native.GetJournalMessageCountAsync(queuePath, ct), cancellationToken);
+    public Task<OperationResult<MessagePage>> GetMessagePageAsync(string queuePath, bool fromTail = false,
+        int maxMessages = 0, long? continuationLookupId = null, CancellationToken cancellationToken = default) =>
+        Run(queuePath, ct => native.GetMessagePageAsync(queuePath, fromTail, maxMessages, continuationLookupId, ct), cancellationToken);
     public Task<OperationResult<IEnumerable<QueueMessage>>> GetMessagesAsync(string queuePath, bool peekOnly = true,
         int maxMessages = 0, CancellationToken cancellationToken = default) =>
         Run(queuePath, ct => native.GetMessagesAsync(queuePath, peekOnly, maxMessages, ct), cancellationToken);

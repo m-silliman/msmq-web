@@ -65,6 +65,7 @@
 
 .message-list-toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 1rem;
 }
@@ -115,6 +116,7 @@
 /* Content Section */
 .message-list-content {
     flex: 1;
+    min-height: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -139,14 +141,13 @@
 /* Grid Layout */
 .message-list-grid {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
 }
 
 .message-grid-header {
     display: grid;
-    grid-template-columns: 40px 1fr 120px 150px 100px;
+    grid-template-columns: 40px minmax(0, 1fr) 120px 150px;
     gap: 0.5rem;
     padding: 0.375rem 0.75rem; /* Reduced padding */
     background-color: var(--app-bg-secondary);
@@ -159,6 +160,18 @@
     min-height: 2rem; /* Compact header height */
     text-transform: uppercase;
     letter-spacing: 0.025em;
+}
+
+.tail-option,
+.batch-size-option {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.batch-size-option select {
+    width: auto;
 }
 
 .message-grid-header .message-grid-cell {

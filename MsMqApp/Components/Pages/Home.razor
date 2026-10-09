@@ -95,6 +95,14 @@
             else
             {
                 <MessageList Messages="@Messages"
+                             ReadFromTail="@ReadFromTail"
+                             ReadFromTailChanged="@ChangeReadFromTailAsync"
+                             @bind-BatchSize="@MessageBatchSize"
+                             OnLoadMore="@LoadMoreMessagesAsync"
+                             HasMore="@HasMoreMessages"
+                             IsLoadingMore="@IsLoadingMoreMessages"
+                             PagingError="@MessagePagingError"
+                             ListVersion="@MessageListVersion"
                              SelectedQueue="@SelectedQueue"
                              ViewType="@CurrentViewType"
                              SelectedMessage="@SelectedMessage"
