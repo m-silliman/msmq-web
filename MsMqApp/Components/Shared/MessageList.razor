@@ -29,11 +29,22 @@
         }
         
         <div class="message-list-toolbar">
+            <button type="button"
+                    class="search-help-button"
+                    @onclick="ToggleSearchHelp"
+                    aria-expanded="@ShowSearchHelp"
+                    aria-controls="message-search-help"
+                    title="Search syntax help">
+                <i class="bi bi-question-circle" aria-hidden="true"></i>
+                <span class="visually-hidden">Search syntax help</span>
+            </button>
+
             <div class="message-list-search">
                 <i class="bi bi-search search-icon" aria-hidden="true"></i>
                 <input type="text"
                        class="form-control form-control-sm"
                        placeholder="Search loaded..."
+                       title="Use + for AND, | for OR, parentheses for grouping, and quotes for phrases with spaces."
                        @bind="SearchQuery"
                        @bind:event="oninput"
                        @bind:after="OnSearchChangedAsync" />
@@ -83,6 +94,40 @@
                             ShowRefreshLabel="false"
                             ShowPauseLabel="false" />
         </div>
+
+        @if (ShowSearchHelp)
+        {
+            <div id="message-search-help" class="search-help-panel" role="note">
+                <div class="search-help-title">
+                    <i class="bi bi-lightbulb" aria-hidden="true"></i>
+                    Search syntax
+                </div>
+                <table class="search-help-examples">
+                    <tbody>
+                        <tr>
+                            <th scope="row"><code>ABC</code></th>
+                            <td>Matches text containing ABC.</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><code>ABC+EFG</code></th>
+                            <td>Matches messages containing both terms.</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><code>ABC|EFG</code></th>
+                            <td>Matches messages containing either term.</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><code>(ABC|EFG)+ProductionStatus</code></th>
+                            <td>Combines groups.</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><code>&quot;Production Status&quot;</code></th>
+                            <td>Searches a phrase including spaces.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 
     <div class="message-list-content">

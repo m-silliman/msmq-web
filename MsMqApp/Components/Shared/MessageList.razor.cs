@@ -218,6 +218,11 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     protected bool SearchBody { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the search syntax help is visible.
+    /// </summary>
+    protected bool ShowSearchHelp { get; set; }
+
+    /// <summary>
     /// Gets whether bodies for the current page are being loaded for search.
     /// </summary>
     protected bool IsLoadingBodySearch => _isLoadingBodySearch;
@@ -386,6 +391,11 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
         StateHasChanged();
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// Shows or hides the search syntax help.
+    /// </summary>
+    protected void ToggleSearchHelp() => ShowSearchHelp = !ShowSearchHelp;
 
     /// <summary>
     /// Enables or disables body search. Enabling it loads bodies for the messages already in the list.
@@ -633,12 +643,8 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
         // Apply search filter
         if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
-            var query = SearchQuery.Trim();
-            filtered = filtered.Where(m =>
-                ContainsSearchText(m.Label, query) ||
-                ContainsSearchText(m.Id, query) ||
-                ContainsSearchText(m.CorrelationId, query) ||
-                (SearchBody && m.IsBodyLoaded && ContainsSearchText(m.Body.RawContent, query)));
+            var query = SearchQueryExpression.Parse(SearchQuery);
+            filtered = filtered.Where(m => query.Matches(m, SearchBody));
         }
 
         // Apply sorting
@@ -661,6 +667,219 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
 
     private static bool ContainsSearchText(string? value, string query) =>
         !string.IsNullOrEmpty(value) && value.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Represents a parsed message search expression. Terms use the same fields as the
+    /// original search, while '+' and '|' combine terms and parentheses group them.
+    /// </summary>
+    private abstract class SearchQueryExpression
+    {
+        public abstract bool Matches(QueueMessage message, bool searchBody);
+
+        public static SearchQueryExpression Parse(string query)
+        {
+            var parser = new SearchQueryParser(query);
+            return parser.TryParse(out var expression)
+                ? expression
+                : new SearchTermExpression(query.Trim());
+        }
+    }
+
+    private sealed class SearchTermExpression(string term) : SearchQueryExpression
+    {
+        public override bool Matches(QueueMessage message, bool searchBody) =>
+            ContainsSearchText(message.Label, term) ||
+            ContainsSearchText(message.Id, term) ||
+            ContainsSearchText(message.CorrelationId, term) ||
+            (searchBody && message.IsBodyLoaded && ContainsSearchText(message.Body.RawContent, term));
+    }
+
+    private sealed class SearchAndExpression(
+        SearchQueryExpression left,
+        SearchQueryExpression right) : SearchQueryExpression
+    {
+        public override bool Matches(QueueMessage message, bool searchBody) =>
+            left.Matches(message, searchBody) && right.Matches(message, searchBody);
+    }
+
+    private sealed class SearchOrExpression(
+        SearchQueryExpression left,
+        SearchQueryExpression right) : SearchQueryExpression
+    {
+        public override bool Matches(QueueMessage message, bool searchBody) =>
+            left.Matches(message, searchBody) || right.Matches(message, searchBody);
+    }
+
+    /// <summary>
+    /// Parses terms, quoted phrases, '+', '|', and parentheses. AND has higher
+    /// precedence than OR. Whitespace around operators and parentheses is ignored;
+    /// whitespace inside a quoted term is part of that term.
+    /// </summary>
+    private sealed class SearchQueryParser(string input)
+    {
+        private int _position;
+
+        public bool TryParse(out SearchQueryExpression expression)
+        {
+            expression = null!;
+            SkipWhitespace();
+            if (_position >= input.Length || !TryParseOr(out expression))
+            {
+                return false;
+            }
+
+            SkipWhitespace();
+            return _position == input.Length;
+        }
+
+        private bool TryParseOr(out SearchQueryExpression expression)
+        {
+            if (!TryParseAnd(out expression))
+            {
+                return false;
+            }
+
+            while (true)
+            {
+                SkipWhitespace();
+                if (!TryConsume('|'))
+                {
+                    return true;
+                }
+
+                if (!TryParseAnd(out var right))
+                {
+                    expression = null!;
+                    return false;
+                }
+
+                expression = new SearchOrExpression(expression, right);
+            }
+        }
+
+        private bool TryParseAnd(out SearchQueryExpression expression)
+        {
+            if (!TryParsePrimary(out expression))
+            {
+                return false;
+            }
+
+            while (true)
+            {
+                SkipWhitespace();
+                if (!TryConsume('+'))
+                {
+                    return true;
+                }
+
+                if (!TryParsePrimary(out var right))
+                {
+                    expression = null!;
+                    return false;
+                }
+
+                expression = new SearchAndExpression(expression, right);
+            }
+        }
+
+        private bool TryParsePrimary(out SearchQueryExpression expression)
+        {
+            expression = null!;
+            SkipWhitespace();
+            if (_position >= input.Length)
+            {
+                return false;
+            }
+
+            if (TryConsume('('))
+            {
+                if (!TryParseOr(out expression))
+                {
+                    return false;
+                }
+
+                SkipWhitespace();
+                return TryConsume(')');
+            }
+
+            if (input[_position] == ')' || input[_position] == '|' || input[_position] == '+')
+            {
+                return false;
+            }
+
+            var term = input[_position] == '"'
+                ? ReadQuotedTerm()
+                : ReadUnquotedTerm();
+
+            if (term == null || term.Length == 0)
+            {
+                return false;
+            }
+
+            expression = new SearchTermExpression(term);
+            return true;
+        }
+
+        private string? ReadQuotedTerm()
+        {
+            _position++; // Opening quote.
+            var builder = new System.Text.StringBuilder();
+
+            while (_position < input.Length)
+            {
+                var character = input[_position++];
+                if (character == '"')
+                {
+                    return builder.ToString();
+                }
+
+                if (character == '\\' && _position < input.Length)
+                {
+                    var next = input[_position];
+                    if (next is '"' or '\\')
+                    {
+                        builder.Append(next);
+                        _position++;
+                        continue;
+                    }
+                }
+
+                builder.Append(character);
+            }
+
+            return null;
+        }
+
+        private string ReadUnquotedTerm()
+        {
+            var start = _position;
+            while (_position < input.Length && input[_position] is not ('+' or '|' or '(' or ')' or '"'))
+            {
+                _position++;
+            }
+
+            return input[start.._position].Trim();
+        }
+
+        private void SkipWhitespace()
+        {
+            while (_position < input.Length && char.IsWhiteSpace(input[_position]))
+            {
+                _position++;
+            }
+        }
+
+        private bool TryConsume(char character)
+        {
+            if (_position >= input.Length || input[_position] != character)
+            {
+                return false;
+            }
+
+            _position++;
+            return true;
+        }
+    }
 
     private async Task LoadBodiesForSearchAsync()
     {

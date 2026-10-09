@@ -52,6 +52,54 @@ public class MessageListPagingTests
     }
 
     [Fact]
+    public void SearchSupportsAndOrGroupingAndQuotedPhrases()
+    {
+        var list = new ListHarness();
+        list.SetRows([
+            new() { Label = "ABC", CorrelationId = "ProductionStatus" },
+            new() { Label = "EFG ProductionStatus" },
+            new() { Label = "ABC EFG" },
+            new() { Label = "Production Status" },
+            new() { Label = "unrelated" }
+        ]);
+
+        list.SetQuery("ABC + ProductionStatus");
+        list.Apply();
+        Assert.Single(list.Rows);
+        Assert.Equal("ABC", list.Rows[0].Label);
+
+        list.SetQuery("ABC | EFG");
+        list.Apply();
+        Assert.Equal(3, list.Rows.Count);
+
+        list.SetQuery("(ABC|EFG)+ProductionStatus");
+        list.Apply();
+        Assert.Equal(2, list.Rows.Count);
+
+        list.SetQuery("\"Production Status\"");
+        list.Apply();
+        Assert.Single(list.Rows);
+        Assert.Equal("Production Status", list.Rows[0].Label);
+    }
+
+    [Fact]
+    public void SearchOperatorsDoNotSplitQuotedText()
+    {
+        var list = new ListHarness();
+        list.SetRows([
+            new() { Label = "ABC+EFG" },
+            new() { Label = "ABC" },
+            new() { Label = "EFG" }
+        ]);
+
+        list.SetQuery("\"ABC+EFG\"");
+        list.Apply();
+
+        Assert.Single(list.Rows);
+        Assert.Equal("ABC+EFG", list.Rows[0].Label);
+    }
+
+    [Fact]
     public async Task RepeatedLoadMoreRequestsDoNotOverlapAndPauseAutoRefresh()
     {
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

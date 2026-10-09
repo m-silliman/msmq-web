@@ -107,6 +107,67 @@
     color: var(--app-text-primary);
 }
 
+.search-help-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    padding: 0;
+    color: var(--app-text-secondary);
+    background: transparent;
+    border: 1px solid var(--app-border-color);
+    border-radius: 0.25rem;
+}
+
+.search-help-button:hover,
+.search-help-button:focus-visible {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.search-help-panel {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    color: var(--app-text-secondary);
+    background-color: var(--app-bg-tertiary);
+    border: 1px solid var(--app-border-color);
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.search-help-title {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.25rem;
+    color: var(--app-text-primary);
+    font-weight: 600;
+}
+
+.search-help-examples {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+}
+
+.search-help-examples th,
+.search-help-examples td {
+    padding: 0.15rem 0.5rem 0.15rem 0;
+    text-align: left;
+    vertical-align: top;
+}
+
+.search-help-examples th {
+    white-space: nowrap;
+    font-weight: 400;
+}
+
+.search-help-examples code {
+    color: var(--bs-primary);
+    font-size: inherit;
+}
+
 .search-body-option {
     display: flex;
     align-items: center;
