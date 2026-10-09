@@ -67,7 +67,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem;
+    gap: 0.5rem;
 }
 
 /* Search Box */
@@ -107,10 +107,51 @@
     color: var(--app-text-primary);
 }
 
-/* Info Text */
-.message-list-info {
+.search-body-option {
     display: flex;
     align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    color: var(--app-text-secondary);
+    cursor: pointer;
+}
+
+.search-body-option .form-check-input {
+    margin: 0;
+}
+
+.batch-size-select {
+    width: 4.5rem;
+    cursor: pointer;
+}
+
+.message-sort-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    padding: 0;
+    color: var(--app-text-secondary);
+    background: transparent;
+    border: 1px solid var(--app-border-color);
+    border-radius: 0.25rem;
+}
+
+.message-sort-toggle:hover:not(:disabled),
+.message-sort-toggle:focus-visible {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.message-sort-toggle:disabled {
+    opacity: 0.55;
+}
+
+.message-list-count {
+    margin-right: auto;
+    white-space: nowrap;
 }
 
 /* Content Section */
@@ -162,18 +203,6 @@
     letter-spacing: 0.025em;
 }
 
-.tail-option,
-.batch-size-option {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    white-space: nowrap;
-}
-
-.batch-size-option select {
-    width: auto;
-}
-
 .message-grid-header .message-grid-cell {
     cursor: pointer;
     user-select: none;
@@ -207,10 +236,14 @@
 
 /* Footer Section - Compact */
 .message-list-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
     padding: 0.25rem 0.75rem; /* Reduced padding */
     background-color: var(--app-bg-secondary);
     border-top: 1px solid var(--app-border-color);
-    text-align: center;
     font-size: 0.75rem; /* Smaller footer text */
 }
 

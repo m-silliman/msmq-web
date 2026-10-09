@@ -11,9 +11,12 @@ public class MessageListPagingTests
         public void Apply() => OnParametersSet();
         public void SetRows(List<QueueMessage> rows) => Messages = rows;
         public void SetTail(bool tail) => ReadFromTail = tail;
+        public void SetQuery(string query) => SearchQuery = query;
+        public void SetBodySearch(bool enabled) => SearchBody = enabled;
         public void SetHasMore(bool hasMore) => HasMore = hasMore;
         public void SetLoadMore(Func<Task> callback) => OnLoadMore = EventCallback.Factory.Create(new object(), callback);
         public List<QueueMessage> Rows => FilteredMessages;
+        public string CountText => GetMessageCountText();
         public bool Paused => IsPaused;
         public Task LoadNext() => LoadMoreAsync();
     }
@@ -29,6 +32,23 @@ public class MessageListPagingTests
         list.SetTail(false);
         list.Apply();
         Assert.Equal("older", list.Rows[0].Label);
+    }
+
+    [Fact]
+    public void BodySearchIncludesLoadedBodyAndCountStaysCompact()
+    {
+        var list = new ListHarness();
+        list.SetRows([
+            new() { Label = "first", Body = new MessageBody("needle in body"), IsBodyLoaded = true },
+            new() { Label = "second", Body = new MessageBody("other text"), IsBodyLoaded = true }
+        ]);
+        list.Apply();
+        list.SetBodySearch(true);
+        list.SetQuery("needle");
+        list.Apply();
+
+        Assert.Single(list.Rows);
+        Assert.Equal("2 loaded", list.CountText);
     }
 
     [Fact]

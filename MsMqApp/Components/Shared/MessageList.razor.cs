@@ -17,12 +17,14 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     private int _lastListVersion = -1;
     private bool? _lastReadFromTail;
     private bool _loadingNextPage;
+    private bool _isLoadingBodySearch;
     private bool _disposed;
     private IJSObjectReference? _scrollModule;
     private DotNetObjectReference<MessageListBase>? _scrollReference;
     protected ElementReference ListElement;
 
     [Inject] public IJSRuntime JSRuntime { get; set; } = default!;
+    [Inject] public IMsmqService MsmqService { get; set; } = default!;
     [Parameter] public bool ReadFromTail { get; set; } = true;
     [Parameter] public EventCallback<bool> ReadFromTailChanged { get; set; }
     [Parameter] public int BatchSize { get; set; } = 100;
@@ -47,12 +49,6 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
             await _scrollModule.InvokeVoidAsync("attach", ListElement, _scrollReference);
         }
         catch (JSDisconnectedException) { }
-    }
-
-    protected async Task ChangeTailAsync(ChangeEventArgs args)
-    {
-        IsPaused = false;
-        await ReadFromTailChanged.InvokeAsync(args.Value is true);
     }
 
     protected Task ChangeBatchSizeAsync(ChangeEventArgs args)
@@ -217,6 +213,16 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     protected bool IsPaused { get; set; }
 
     /// <summary>
+    /// Gets whether message bodies should be included in the search.
+    /// </summary>
+    protected bool SearchBody { get; set; }
+
+    /// <summary>
+    /// Gets whether bodies for the current page are being loaded for search.
+    /// </summary>
+    protected bool IsLoadingBodySearch => _isLoadingBodySearch;
+
+    /// <summary>
     /// Gets the list of selected messages.
     /// </summary>
     protected List<QueueMessage> SelectedMessages { get; } = new();
@@ -243,6 +249,7 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
         if (_lastListVersion != ListVersion)
         {
             SelectedMessages.Clear();
+            SearchBody = false;
             _lastListVersion = ListVersion;
         }
         if (_lastReadFromTail != ReadFromTail)
@@ -260,13 +267,13 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     /// <returns>The message count text.</returns>
     protected string GetMessageCountText()
     {
-        if (FilteredMessages.Count != Messages.Count)
-        {
-            return $"{FilteredMessages.Count} of {Messages.Count} loaded messages (limited view)";
-        }
-
-        return $"{Messages.Count} loaded message{(Messages.Count != 1 ? "s" : "")} (limited view)";
+        return $"{Messages.Count:N0} loaded";
     }
+
+    /// <summary>
+    /// Gets the accessible label and tooltip for the message time sort button.
+    /// </summary>
+    protected string GetTailSortLabel() => ReadFromTail ? "Newest messages first" : "Oldest messages first";
 
     /// <summary>
     /// Gets the view type display text for the header.
@@ -378,6 +385,30 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
         ApplyFilterAndSort();
         StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Enables or disables body search. Enabling it loads bodies for the messages already in the list.
+    /// </summary>
+    protected async Task ChangeSearchBodyAsync(ChangeEventArgs args)
+    {
+        SearchBody = args.Value is bool value && value;
+        if (SearchBody)
+        {
+            await LoadBodiesForSearchAsync();
+        }
+
+        ApplyFilterAndSort();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Toggles whether the newest or oldest messages are displayed first.
+    /// </summary>
+    protected Task ToggleTailAsync()
+    {
+        IsPaused = false;
+        return ReadFromTailChanged.InvokeAsync(!ReadFromTail);
     }
 
     /// <summary>
@@ -602,11 +633,12 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
         // Apply search filter
         if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
-            var query = SearchQuery.ToLowerInvariant();
+            var query = SearchQuery.Trim();
             filtered = filtered.Where(m =>
-                m.Label.ToLowerInvariant().Contains(query) ||
-                m.Id.ToLowerInvariant().Contains(query) ||
-                m.CorrelationId.ToLowerInvariant().Contains(query));
+                ContainsSearchText(m.Label, query) ||
+                ContainsSearchText(m.Id, query) ||
+                ContainsSearchText(m.CorrelationId, query) ||
+                (SearchBody && m.IsBodyLoaded && ContainsSearchText(m.Body.RawContent, query)));
         }
 
         // Apply sorting
@@ -625,5 +657,38 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
         };
 
         FilteredMessages = filtered.ToList();
+    }
+
+    private static bool ContainsSearchText(string? value, string query) =>
+        !string.IsNullOrEmpty(value) && value.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+    private async Task LoadBodiesForSearchAsync()
+    {
+        if (_isLoadingBodySearch || MsmqService == null) return;
+
+        _isLoadingBodySearch = true;
+        var listVersion = ListVersion;
+        var messagesToLoad = Messages.Where(m => !m.IsBodyLoaded).ToList();
+        try
+        {
+            foreach (var message in messagesToLoad)
+            {
+                if (_disposed || !SearchBody || listVersion != ListVersion) return;
+
+                var result = message.LookupId != 0
+                    ? await MsmqService.GetMessageByLookupIdAsync(message.QueuePath, message.LookupId)
+                    : await MsmqService.GetMessageByIdAsync(message.QueuePath, message.Id);
+
+                if (result.Success && result.Data != null)
+                {
+                    message.Body = result.Data.Body;
+                    message.IsBodyLoaded = true;
+                }
+            }
+        }
+        finally
+        {
+            _isLoadingBodySearch = false;
+        }
     }
 }

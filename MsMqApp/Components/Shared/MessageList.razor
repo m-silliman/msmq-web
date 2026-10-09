@@ -33,7 +33,7 @@
                 <i class="bi bi-search search-icon" aria-hidden="true"></i>
                 <input type="text"
                        class="form-control form-control-sm"
-                       placeholder="Search loaded messages..."
+                       placeholder="Search loaded..."
                        @bind="SearchQuery"
                        @bind:event="oninput"
                        @bind:after="OnSearchChangedAsync" />
@@ -47,27 +47,32 @@
                 }
             </div>
 
-            <label class="tail-option" title="Read from the end of the queue, including journal queues">
-                <input type="checkbox" class="form-check-input" checked="@ReadFromTail"
-                       @onchange="ChangeTailAsync" disabled="@(IsLoading || IsLoadingMore)" />
-                Show New Messages First
+            <label class="search-body-option" title="Include message bodies in the search. Bodies are loaded for the current page.">
+                <input type="checkbox" class="form-check-input" checked="@SearchBody"
+                       @onchange="ChangeSearchBodyAsync" disabled="@(IsLoading || IsLoadingMore || IsLoadingBodySearch)" />
+                <span>Body</span>
             </label>
 
-            <label class="batch-size-option" title="Applies to the next load or refresh; keeps the messages already loaded">
-                Messages per load
-                <select class="form-select form-select-sm" value="@BatchSize"
-                        @onchange="ChangeBatchSizeAsync" disabled="@(IsLoading || IsLoadingMore)">
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                    <option value="500">500</option>
-                </select>
-            </label>
+            <select class="form-select form-select-sm batch-size-select"
+                    value="@BatchSize"
+                    aria-label="Messages per load"
+                    title="Messages per load"
+                    @onchange="ChangeBatchSizeAsync"
+                    disabled="@(IsLoading || IsLoadingMore || IsLoadingBodySearch)">
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+            </select>
 
-            <div class="message-list-info">
-                <small class="text-muted">
-                    @GetMessageCountText()
-                </small>
-            </div>
+            <button type="button"
+                    class="message-sort-toggle"
+                    @onclick="ToggleTailAsync"
+                    disabled="@(IsLoading || IsLoadingMore || IsLoadingBodySearch)"
+                    aria-pressed="@ReadFromTail"
+                    aria-label="@GetTailSortLabel()"
+                    title="@GetTailSortLabel()">
+                <i class="bi @(ReadFromTail ? "bi-sort-down-alt" : "bi-sort-up-alt")" aria-hidden="true"></i>
+            </button>
 
             <RefreshControl OnRefresh="@HandleRefreshAsync"
                             AutoRefreshEnabled="@(AutoRefreshEnabled && !IsLoadingMore)"
@@ -136,9 +141,10 @@
         }
     </div>
 
-    @if (!IsLoading && (HasMore || PagingError != null || IsPaused))
+    @if (!IsLoading && (SelectedQueue != null || HasMore || PagingError != null || IsPaused))
     {
         <div class="message-list-footer" aria-live="polite">
+            <small class="message-list-count text-muted">@GetMessageCountText()</small>
             @if (PagingError != null)
             {
                 <span class="text-warning">@PagingError</span>
