@@ -15,6 +15,7 @@
     min-height: 2rem; /* Compact row height */
     font-size: 0.8rem; /* Smaller font for more rows */
     line-height: 1.2; /* Tighter line height */
+    min-width: var(--message-list-min-width, 1024px);
 }
 
 .message-row-with-standard-columns {

@@ -2,7 +2,13 @@
    MessageList Component Styles
    =========================== */
 
+/*
+ * Manual responsive-width tuning:
+ * Set this to the smallest usable message-list width. When the viewport is
+ * narrower than this value, the message grid becomes horizontally scrollable.
+ */
 .message-list {
+    --message-list-min-width: 1024px;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -259,6 +265,7 @@
 .message-list-grid {
     flex: 1;
     min-height: 0;
+    overflow-x: auto;
     overflow-y: auto;
 }
 
@@ -277,6 +284,7 @@
     min-height: 2rem; /* Compact header height */
     text-transform: uppercase;
     letter-spacing: 0.025em;
+    min-width: var(--message-list-min-width);
 }
 
 .message-grid-header .message-grid-cell {
