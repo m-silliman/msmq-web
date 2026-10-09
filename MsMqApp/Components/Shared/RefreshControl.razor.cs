@@ -254,7 +254,11 @@ public class RefreshControlBase : ComponentBase, IDisposable
             {
                 await InvokeAsync(async () =>
                 {
-                    await OnRefresh.InvokeAsync();
+                    // A selection or export may have paused refresh while this tick was queued.
+                    if (!_disposed && !IsRefreshing && !IsPaused && AutoRefreshEnabled)
+                    {
+                        await OnRefresh.InvokeAsync();
+                    }
                 });
             }
         }

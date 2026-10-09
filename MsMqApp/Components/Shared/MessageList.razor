@@ -291,6 +291,7 @@
 <ExportMessagesDialog @bind-IsOpen="ShowExportConfirmation"
                       MessageCount="@SelectedMessages.Count"
                       @bind-FileName="ExportFileName"
+                      @bind-DataOnly="ExportDataOnly"
                       IsProcessing="@IsExporting"
                       ErrorMessage="@ExportErrorMessage"
                       OnConfirm="ExportSelectedMessagesAsync"

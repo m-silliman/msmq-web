@@ -298,6 +298,11 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     protected string ExportFileName { get; set; } = "messages";
 
     /// <summary>
+    /// Gets or sets whether exports contain only the original message bodies.
+    /// </summary>
+    protected bool ExportDataOnly { get; set; }
+
+    /// <summary>
     /// Gets or sets the export error shown in the confirmation dialog.
     /// </summary>
     protected string? ExportErrorMessage { get; set; }
@@ -578,6 +583,8 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     /// <returns>A task representing the asynchronous operation.</returns>
     protected async Task SelectMessageAsync(QueueMessage message)
     {
+        IsPaused = true;
+        StateHasChanged();
         SelectedMessage = message;
 
         if (SelectedMessageChanged.HasDelegate)
@@ -600,6 +607,8 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     /// <returns>A task representing the asynchronous operation.</returns>
     protected async Task ToggleMessageSelectionAsync(QueueMessage message)
     {
+        IsPaused = true;
+        StateHasChanged();
         if (IsMessageSelected(message))
         {
             SelectedMessages.RemoveAll(m => m.Id == message.Id);
@@ -623,6 +632,8 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     /// <returns>A task representing the asynchronous operation.</returns>
     protected async Task ToggleSelectAllAsync()
     {
+        IsPaused = true;
+        StateHasChanged();
         if (AreAllSelected())
         {
             // Deselect all
@@ -747,7 +758,9 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
             return;
         }
 
+        IsPaused = true;
         ExportFileName = $"messages_{DateTime.Now:yyyyMMdd_HHmmss}";
+        ExportDataOnly = false;
         ExportErrorMessage = null;
         ShowExportConfirmation = true;
         StateHasChanged();
@@ -764,7 +777,7 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     }
 
     /// <summary>
-    /// Exports the selected messages as a single JSON file.
+    /// Exports the selected messages as individual files in a ZIP download.
     /// </summary>
     protected async Task ExportSelectedMessagesAsync()
     {
@@ -773,7 +786,9 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
             return;
         }
 
+        IsPaused = true;
         IsExporting = true;
+        var messagesToExport = SelectedMessages.ToList();
         ExportErrorMessage = null;
         StateHasChanged();
 
@@ -787,16 +802,18 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
             var exportedFiles = new List<string>();
             var usedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var failedMessages = new List<string>();
+            var exportFormat = ExportDataOnly ? ExportFormat.Binary : ExportFormat.Json;
+            var extension = ExportDataOnly ? ".data" : ".json";
 
-            foreach (var message in SelectedMessages.ToList())
+            foreach (var message in messagesToExport)
             {
-                var fileName = GetUniqueMessageFileName(message, usedFileNames);
+                var fileName = GetUniqueMessageFileName(message, usedFileNames, extension);
                 var filePath = Path.Combine(exportDirectory, fileName);
                 var result = await MessageOperationsService.ExportMessageAsync(
                     queuePath,
                     message.Id,
                     filePath,
-                    ExportFormat.Json);
+                    exportFormat);
 
                 if (result.Success)
                 {
@@ -808,11 +825,11 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
                 }
             }
 
-            if (failedMessages.Count > 0 || exportedFiles.Count != SelectedMessages.Count)
+            if (failedMessages.Count > 0 || exportedFiles.Count != messagesToExport.Count)
             {
-                var failedCount = SelectedMessages.Count - exportedFiles.Count;
+                var failedCount = messagesToExport.Count - exportedFiles.Count;
                 throw new InvalidOperationException(
-                    $"Could not export {failedCount} of {SelectedMessages.Count} selected message{(SelectedMessages.Count == 1 ? "" : "s")}. No download was created.");
+                    $"Could not export {failedCount} of {messagesToExport.Count} selected message{(messagesToExport.Count == 1 ? "" : "s")}. No download was created.");
             }
 
             var zipFileName = $"{SanitizeZipFileName(ExportFileName)}.zip";
@@ -850,19 +867,19 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     }
 
     /// <summary>
-    /// Gets a safe, unique JSON filename for an exported message.
+    /// Gets a safe, unique filename for an exported message.
     /// </summary>
-    private static string GetUniqueMessageFileName(QueueMessage message, ISet<string> usedFileNames)
+    private static string GetUniqueMessageFileName(QueueMessage message, ISet<string> usedFileNames, string extension)
     {
         var label = SanitizeFileNamePart(message.Label, "message");
         var messageId = SanitizeFileNamePart(message.Id, "messageid");
         var baseName = $"{label}-{messageId}";
-        var fileName = $"{baseName}.json";
+        var fileName = $"{baseName}{extension}";
         var suffix = 2;
 
         while (!usedFileNames.Add(fileName))
         {
-            fileName = $"{baseName}-{suffix++}.json";
+            fileName = $"{baseName}-{suffix++}{extension}";
         }
 
         return fileName;

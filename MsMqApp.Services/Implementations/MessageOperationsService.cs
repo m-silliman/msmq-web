@@ -377,9 +377,14 @@ public class MessageOperationsService : IMessageOperationsService
             };
 
             // Write to file
-            if (format == ExportFormat.Binary && messageResult.Data.Body?.RawBytes != null)
+            if (format == ExportFormat.Binary)
             {
-                await File.WriteAllBytesAsync(filePath, messageResult.Data.Body.RawBytes, cancellationToken);
+                // Preserve original bytes for structured text as well as binary bodies.
+                // Bodies available only as text use their declared encoding, without adding a BOM.
+                var body = messageResult.Data.Body;
+                var bytes = body?.RawBytes ?? Encoding.GetEncoding(body?.Encoding ?? "UTF-8")
+                    .GetBytes(body?.RawContent ?? string.Empty);
+                await File.WriteAllBytesAsync(filePath, bytes, cancellationToken);
             }
             else
             {

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components;
 namespace MsMqApp.Components.Shared;
 
 /// <summary>
-/// Collects the ZIP filename and confirms a selected-message export.
+/// Collects the ZIP filename and content option for a selected-message export.
 /// </summary>
 public class ExportMessagesDialogBase : ComponentBase
 {
@@ -23,6 +23,12 @@ public class ExportMessagesDialogBase : ComponentBase
     public EventCallback<string> FileNameChanged { get; set; }
 
     [Parameter]
+    public bool DataOnly { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> DataOnlyChanged { get; set; }
+
+    [Parameter]
     public bool IsProcessing { get; set; }
 
     [Parameter]
@@ -37,8 +43,17 @@ public class ExportMessagesDialogBase : ComponentBase
     protected string DialogTitleId { get; } = $"export-dialog-title-{Guid.NewGuid():N}";
     protected string DialogMessageId { get; } = $"export-dialog-message-{Guid.NewGuid():N}";
     protected string FileNameInputId { get; } = $"export-file-name-{Guid.NewGuid():N}";
+    protected string DataOnlyInputId { get; } = $"export-data-only-{Guid.NewGuid():N}";
 
     protected bool IsFileNameValid => !string.IsNullOrWhiteSpace(FileName);
+
+    protected async Task OnDataOnlyChangedAsync(ChangeEventArgs args)
+    {
+        if (!IsProcessing)
+        {
+            await DataOnlyChanged.InvokeAsync(args.Value is true);
+        }
+    }
 
     protected async Task OnFileNameChangedAsync(ChangeEventArgs args)
     {
