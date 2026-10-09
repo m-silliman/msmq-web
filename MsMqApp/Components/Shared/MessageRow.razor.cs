@@ -36,6 +36,12 @@ public class MessageRowBase : ComponentBase
     public bool ShowId { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the standard list-only Id and Size columns are rendered.
+    /// </summary>
+    [Parameter]
+    public bool ShowStandardColumns { get; set; }
+
+    /// <summary>
     /// Gets or sets the callback invoked when the row is clicked.
     /// </summary>
     [Parameter]
@@ -168,6 +174,16 @@ public class MessageRowBase : ComponentBase
     protected string GetCheckboxAriaLabel()
     {
         return $"Select message: {Message.Label}";
+    }
+
+    /// <summary>
+    /// Gets the tooltip for the body-size column.
+    /// </summary>
+    protected string GetSizeTitle()
+    {
+        return Message.IsBodyLoaded
+            ? "Body size"
+            : "Body size reported by MSMQ without loading the body";
     }
 
     /// <summary>

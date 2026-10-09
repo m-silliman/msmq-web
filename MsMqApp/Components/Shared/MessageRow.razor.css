@@ -17,6 +17,10 @@
     line-height: 1.2; /* Tighter line height */
 }
 
+.message-row-with-standard-columns {
+    grid-template-columns: 40px minmax(0, 1.2fr) minmax(0, 1.5fr) 90px 120px 150px;
+}
+
 .message-row:hover {
     background-color: var(--app-bg-tertiary);
 }
@@ -97,6 +101,27 @@
     margin-top: 0.05rem; /* Minimal spacing */
 }
 
+.message-cell-id {
+    min-width: 0;
+    color: var(--app-text-muted);
+    font-family: 'Courier New', monospace;
+    font-size: 0.7rem;
+}
+
+.message-id-column-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-cell-size {
+    justify-content: flex-end;
+    color: var(--app-text-secondary);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 .message-cell-priority {
     justify-content: flex-start;
 }
@@ -138,6 +163,18 @@
     .message-id-text {
         font-size: 0.65rem;
         margin-top: 0.025rem;
+    }
+
+    .message-row-with-standard-columns {
+        grid-template-columns: 40px minmax(0, 1.2fr) minmax(0, 1.5fr) 80px 100px 120px;
+    }
+
+    .message-cell-id {
+        font-size: 0.65rem;
+    }
+
+    .message-cell-size {
+        font-size: 0.7rem;
     }
     
     .message-cell-priority .badge {

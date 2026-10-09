@@ -83,7 +83,12 @@ public class MessagePagingTests(ITestOutputHelper output)
                     var rows = first.Messages.Concat(second.Messages).Concat(third.Messages).ToList();
                     var expected = Enumerable.Range(0, 205);
                     Assert.Equal((tail ? expected.Reverse() : expected).Select(i => i.ToString()), rows.Select(m => m.Label));
-                    Assert.All(rows, row => { Assert.False(row.IsBodyLoaded); Assert.Null(row.Body.RawBytes); });
+                    Assert.All(rows, row =>
+                    {
+                        Assert.False(row.IsBodyLoaded);
+                        Assert.Null(row.Body.RawBytes);
+                        Assert.Equal(1024, row.BodySizeBytes);
+                    });
                     Assert.Equal(205, rows.Select(m => m.LookupId).Distinct().Count());
                 }
                 Send(205);

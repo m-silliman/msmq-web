@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MsMqApp.Models.Domain;
@@ -246,6 +247,26 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     /// Gets or sets whether a delete operation is in progress.
     /// </summary>
     protected bool IsDeleting { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether an export operation is in progress.
+    /// </summary>
+    protected bool IsExporting { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the export confirmation dialog is visible.
+    /// </summary>
+    protected bool ShowExportConfirmation { get; set; }
+
+    /// <summary>
+    /// Gets or sets the base name for the exported ZIP file.
+    /// </summary>
+    protected string ExportFileName { get; set; } = "messages";
+
+    /// <summary>
+    /// Gets or sets the export error shown in the confirmation dialog.
+    /// </summary>
+    protected string? ExportErrorMessage { get; set; }
 
     /// <inheritdoc/>
     protected override void OnParametersSet()
@@ -591,9 +612,7 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
         try
         {
             var messageIds = SelectedMessages.Select(m => m.Id).ToList();
-            var queuePath = ViewType == QueueViewType.JournalMessages 
-                ? SelectedQueue.JournalPath 
-                : (!string.IsNullOrEmpty(SelectedQueue.FormatName) ? SelectedQueue.FormatName : SelectedQueue.Path);
+            var queuePath = GetOperationQueuePath();
 
             var result = await MessageOperationsService.DeleteMessagesAsync(queuePath, messageIds);
 
@@ -624,13 +643,184 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
     }
 
     /// <summary>
-    /// Gets the delete button text based on selected count.
+    /// Shows the export confirmation dialog for the selected messages.
     /// </summary>
-    protected string GetDeleteButtonText()
+    protected void ShowExportSelectedDialog()
     {
-        return SelectedMessages.Count == 1 
-            ? "Delete 1 Message" 
-            : $"Delete {SelectedMessages.Count} Messages";
+        if (SelectedMessages.Count == 0)
+        {
+            return;
+        }
+
+        ExportFileName = $"messages_{DateTime.Now:yyyyMMdd_HHmmss}";
+        ExportErrorMessage = null;
+        ShowExportConfirmation = true;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Handles cancellation of the export confirmation dialog.
+    /// </summary>
+    protected Task HandleExportCancellationAsync()
+    {
+        ExportErrorMessage = null;
+        ShowExportConfirmation = false;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Exports the selected messages as a single JSON file.
+    /// </summary>
+    protected async Task ExportSelectedMessagesAsync()
+    {
+        if (MessageOperationsService == null || SelectedQueue == null || SelectedMessages.Count == 0)
+        {
+            return;
+        }
+
+        IsExporting = true;
+        ExportErrorMessage = null;
+        StateHasChanged();
+
+        string? exportDirectory = null;
+        try
+        {
+            exportDirectory = Path.Combine(Path.GetTempPath(), "MsMqManager", $"export-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(exportDirectory);
+
+            var queuePath = GetOperationQueuePath();
+            var exportedFiles = new List<string>();
+            var usedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var failedMessages = new List<string>();
+
+            foreach (var message in SelectedMessages.ToList())
+            {
+                var fileName = GetUniqueMessageFileName(message, usedFileNames);
+                var filePath = Path.Combine(exportDirectory, fileName);
+                var result = await MessageOperationsService.ExportMessageAsync(
+                    queuePath,
+                    message.Id,
+                    filePath,
+                    ExportFormat.Json);
+
+                if (result.Success)
+                {
+                    exportedFiles.Add(filePath);
+                }
+                else
+                {
+                    failedMessages.Add(message.Id);
+                }
+            }
+
+            if (failedMessages.Count > 0 || exportedFiles.Count != SelectedMessages.Count)
+            {
+                var failedCount = SelectedMessages.Count - exportedFiles.Count;
+                throw new InvalidOperationException(
+                    $"Could not export {failedCount} of {SelectedMessages.Count} selected message{(SelectedMessages.Count == 1 ? "" : "s")}. No download was created.");
+            }
+
+            var zipFileName = $"{SanitizeZipFileName(ExportFileName)}.zip";
+            var zipPath = Path.Combine(exportDirectory, zipFileName);
+            using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+            {
+                foreach (var filePath in exportedFiles)
+                {
+                    archive.CreateEntryFromFile(filePath, Path.GetFileName(filePath), CompressionLevel.Fastest);
+                }
+            }
+
+            await using var zipStream = File.OpenRead(zipPath);
+            using var streamReference = new DotNetStreamReference(zipStream);
+            await JSRuntime.InvokeVoidAsync("downloadFileFromStream", zipFileName, streamReference);
+
+            ShowExportConfirmation = false;
+        }
+        catch (Exception exception)
+        {
+            ExportErrorMessage = exception is InvalidOperationException
+                ? exception.Message
+                : "The messages could not be exported. Please try again.";
+        }
+        finally
+        {
+            if (exportDirectory != null && Directory.Exists(exportDirectory))
+            {
+                Directory.Delete(exportDirectory, recursive: true);
+            }
+
+            IsExporting = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Gets a safe, unique JSON filename for an exported message.
+    /// </summary>
+    private static string GetUniqueMessageFileName(QueueMessage message, ISet<string> usedFileNames)
+    {
+        var label = SanitizeFileNamePart(message.Label, "message");
+        var messageId = SanitizeFileNamePart(message.Id, "messageid");
+        var baseName = $"{label}-{messageId}";
+        var fileName = $"{baseName}.json";
+        var suffix = 2;
+
+        while (!usedFileNames.Add(fileName))
+        {
+            fileName = $"{baseName}-{suffix++}.json";
+        }
+
+        return fileName;
+    }
+
+    /// <summary>
+    /// Removes characters that are unsafe in a Windows filename.
+    /// </summary>
+    private static string SanitizeFileNamePart(string? value, string fallback)
+    {
+        var safeCharacters = value?.Where(character =>
+            char.IsLetterOrDigit(character) || character is '-' or '_').ToArray() ?? Array.Empty<char>();
+        var sanitized = new string(safeCharacters);
+        return string.IsNullOrWhiteSpace(sanitized) ? fallback : sanitized;
+    }
+
+    /// <summary>
+    /// Normalizes the user-provided ZIP download name.
+    /// </summary>
+    private static string SanitizeZipFileName(string? value)
+    {
+        var name = value?.Trim() ?? string.Empty;
+        if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            name = name[..^4];
+        }
+
+        var safeCharacters = name.Where(character =>
+            char.IsLetterOrDigit(character) || character is ' ' or '-' or '_').ToArray();
+        var sanitized = new string(safeCharacters).Trim();
+        return string.IsNullOrWhiteSpace(sanitized)
+            ? $"messages_{DateTime.Now:yyyyMMdd_HHmmss}"
+            : sanitized;
+    }
+
+    /// <summary>
+    /// Gets the queue path used by message operations for the current view.
+    /// </summary>
+    private string GetOperationQueuePath()
+    {
+        if (SelectedQueue == null)
+        {
+            return string.Empty;
+        }
+
+        if (ViewType == QueueViewType.JournalMessages && !string.IsNullOrEmpty(SelectedQueue.JournalPath))
+        {
+            return SelectedQueue.JournalPath;
+        }
+
+        return !string.IsNullOrEmpty(SelectedQueue.FormatName)
+            ? SelectedQueue.FormatName
+            : SelectedQueue.Path;
     }
 
     /// <summary>
@@ -653,6 +843,12 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
             "Label" => _sortAscending
                 ? filtered.OrderBy(m => m.Label)
                 : filtered.OrderByDescending(m => m.Label),
+            "Id" => _sortAscending
+                ? filtered.OrderBy(m => m.Id)
+                : filtered.OrderByDescending(m => m.Id),
+            "Size" => _sortAscending
+                ? filtered.OrderBy(GetBodySizeForSort)
+                : filtered.OrderByDescending(GetBodySizeForSort),
             "Priority" => _sortAscending
                 ? filtered.OrderBy(m => m.Priority)
                 : filtered.OrderByDescending(m => m.Priority),
@@ -664,6 +860,9 @@ public class MessageListBase : ComponentBase, IAsyncDisposable
 
         FilteredMessages = filtered.ToList();
     }
+
+    private static long GetBodySizeForSort(QueueMessage message) =>
+        message.BodySizeBytes ?? (message.IsBodyLoaded ? message.Body.SizeBytes : -1);
 
     private static bool ContainsSearchText(string? value, string query) =>
         !string.IsNullOrEmpty(value) && value.Contains(query, StringComparison.OrdinalIgnoreCase);

@@ -52,6 +52,19 @@ public class MessageListPagingTests
     }
 
     [Fact]
+    public void MetadataBodySizeFormatsWithoutLoadingBody()
+    {
+        var message = new QueueMessage
+        {
+            IsBodyLoaded = false,
+            BodySizeBytes = 1536
+        };
+
+        Assert.Equal("1.50 KB", message.FormattedSize);
+        Assert.Null(message.Body.RawBytes);
+    }
+
+    [Fact]
     public void SearchSupportsAndOrGroupingAndQuotedPhrases()
     {
         var list = new ListHarness();

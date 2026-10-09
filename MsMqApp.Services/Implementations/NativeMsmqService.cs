@@ -451,6 +451,7 @@ public class NativeMsmqService : IMsmqService
             filter.ClearAll();
             filter.Id = filter.LookupId = filter.Label = filter.Priority = filter.ArrivedTime = filter.SentTime = true;
             filter.CorrelationId = filter.TimeToBeReceived = true;
+            using var bodySizeReader = MsmqMessageBodySizeReader.TryCreate(actualPath);
             QueueMessage? Peek(MessageLookupAction action, long lookupId)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -471,13 +472,14 @@ public class NativeMsmqService : IMsmqService
                 }
                 using (message)
                 {
+                    var bodySizeBytes = bodySizeReader?.TryRead(message.LookupId);
                     return new QueueMessage
                     {
                         Id = message.Id, LookupId = message.LookupId, Label = message.Label,
                         CorrelationId = message.CorrelationId, TimeToBeReceived = message.TimeToBeReceived,
                         Priority = (Models.Enums.MessagePriority)message.Priority,
                         ArrivedTime = message.ArrivedTime, SentTime = message.SentTime,
-                        QueuePath = actualPath, IsBodyLoaded = false
+                        QueuePath = actualPath, IsBodyLoaded = false, BodySizeBytes = bodySizeBytes
                     };
                 }
             }
@@ -518,6 +520,7 @@ public class NativeMsmqService : IMsmqService
             filter.ClearAll();
             filter.Id = filter.LookupId = filter.Label = filter.Priority = filter.ArrivedTime = filter.SentTime = true;
             filter.CorrelationId = filter.TimeToBeReceived = true;
+            using var bodySizeReader = MsmqMessageBodySizeReader.TryCreate(actualPath);
             var limit = maxMessages > 0 ? maxMessages : Math.Max(1, _settings.MessageListPageSize);
             var messages = new List<QueueMessage>();
             using var cursor = queue.GetMessageEnumerator2();
@@ -526,6 +529,7 @@ public class NativeMsmqService : IMsmqService
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!cursor.MoveNext(TimeSpan.Zero)) break;
                 using var message = cursor.Current;
+                var bodySizeBytes = bodySizeReader?.TryRead(message.LookupId);
                 messages.Add(new QueueMessage
                 {
                     Id = message.Id, LookupId = message.LookupId, Label = message.Label,
@@ -533,7 +537,7 @@ public class NativeMsmqService : IMsmqService
                     TimeToBeReceived = message.TimeToBeReceived,
                     Priority = (Models.Enums.MessagePriority)message.Priority,
                     ArrivedTime = message.ArrivedTime, SentTime = message.SentTime,
-                    QueuePath = actualPath, IsBodyLoaded = false
+                    QueuePath = actualPath, IsBodyLoaded = false, BodySizeBytes = bodySizeBytes
                 });
             }
             cancellationToken.ThrowIfCancellationRequested();

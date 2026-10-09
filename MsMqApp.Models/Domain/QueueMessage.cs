@@ -25,6 +25,12 @@ public class QueueMessage
     public MessageBody Body { get; set; } = new MessageBody();
 
     /// <summary>
+    /// Gets or sets the body size reported by MSMQ without loading the body.
+    /// This is populated for metadata-only list rows when the native property is available.
+    /// </summary>
+    public long? BodySizeBytes { get; set; }
+
+    /// <summary>
     /// Gets or sets the queue path this message belongs to
     /// </summary>
     public string QueuePath { get; set; } = string.Empty;
@@ -200,8 +206,8 @@ public class QueueMessage
     {
         get
         {
-            if (!IsBodyLoaded) return "Not loaded";
-            var bytes = Body.SizeBytes;
+            var bytes = BodySizeBytes ?? (IsBodyLoaded ? Body.SizeBytes : null);
+            if (bytes is null) return "Not loaded";
             if (bytes < 1024)
                 return $"{bytes} B";
             if (bytes < 1024 * 1024)
@@ -247,6 +253,7 @@ public class QueueMessage
             IsBodyLoaded = IsBodyLoaded,
             Label = Label,
             Body = Body,
+            BodySizeBytes = BodySizeBytes,
             QueuePath = QueuePath,
             Priority = Priority,
             ArrivedTime = ArrivedTime,

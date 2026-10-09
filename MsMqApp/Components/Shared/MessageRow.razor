@@ -1,7 +1,7 @@
 @namespace MsMqApp.Components.Shared
 @inherits MessageRowBase
 
-<div class="message-row @GetRowClass()" @onclick="OnRowClickAsync">
+<div class="message-row @(ShowStandardColumns ? "message-row-with-standard-columns" : string.Empty) @GetRowClass()" @onclick="OnRowClickAsync">
     <div class="message-row-cell message-cell-select" @onclick:stopPropagation="true">
         <input type="checkbox"
                class="form-check-input"
@@ -17,6 +17,17 @@
             <span class="message-id-text">@Message.Id</span>
         }
     </div>
+
+    @if (ShowStandardColumns)
+    {
+        <div class="message-row-cell message-cell-id" title="@Message.Id">
+            <span class="message-id-column-text">@Message.Id</span>
+        </div>
+
+        <div class="message-row-cell message-cell-size" title="@GetSizeTitle()">
+            @Message.FormattedSize
+        </div>
+    }
 
     <div class="message-row-cell message-cell-priority">
         <span class="badge @GetPriorityBadgeClass()">

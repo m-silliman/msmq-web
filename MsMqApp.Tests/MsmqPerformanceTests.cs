@@ -351,7 +351,12 @@ public class MsmqPerformanceTests(ITestOutputHelper output)
             output.WriteLine($"10 metadata rows: {timer.Elapsed.TotalMilliseconds:F2} ms");
             Assert.True(rows.Success, rows.ErrorMessage);
             Assert.Equal(10, rows.Data!.Count());
-            Assert.All(rows.Data!, row => { Assert.False(row.IsBodyLoaded); Assert.Null(row.Body.RawBytes); });
+            Assert.All(rows.Data!, row =>
+            {
+                Assert.False(row.IsBodyLoaded);
+                Assert.Null(row.Body.RawBytes);
+                Assert.Equal(1024, row.BodySizeBytes);
+            });
             Assert.Equal("perf-5", rows.Data!.First().Label);
             Assert.Equal(1995, (await service.GetMessageCountAsync(path)).Data);
             var detail = await service.GetMessageByLookupIdAsync(path, rows.Data!.First().LookupId);

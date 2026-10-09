@@ -215,6 +215,21 @@
     white-space: nowrap;
 }
 
+.message-selection-footer {
+    justify-content: space-between;
+}
+
+.message-selection-count {
+    margin-right: auto;
+    white-space: nowrap;
+}
+
+.message-selection-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
 /* Content Section */
 .message-list-content {
     flex: 1;
@@ -249,7 +264,7 @@
 
 .message-grid-header {
     display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) 120px 150px;
+    grid-template-columns: 40px minmax(0, 1.2fr) minmax(0, 1.5fr) 90px 120px 150px;
     gap: 0.5rem;
     padding: 0.375rem 0.75rem; /* Reduced padding */
     background-color: var(--app-bg-secondary);
@@ -282,6 +297,11 @@
 
 .message-grid-header .message-cell-select:hover {
     color: inherit;
+}
+
+.message-grid-header .message-cell-size {
+    justify-content: flex-end;
+    text-align: right;
 }
 
 /* Sort Icons */

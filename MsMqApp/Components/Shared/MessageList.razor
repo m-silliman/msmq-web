@@ -166,6 +166,12 @@
                     <div class="message-grid-cell message-cell-label" @onclick='() => ToggleSortAsync("Label")'>
                         Label @GetSortIcon("Label")
                     </div>
+                    <div class="message-grid-cell message-cell-id" @onclick='() => ToggleSortAsync("Id")'>
+                        Id @GetSortIcon("Id")
+                    </div>
+                    <div class="message-grid-cell message-cell-size" @onclick='() => ToggleSortAsync("Size")'>
+                        Size @GetSortIcon("Size")
+                    </div>
                     <div class="message-grid-cell message-cell-priority" @onclick='() => ToggleSortAsync("Priority")'>
                         Priority @GetSortIcon("Priority")
                     </div>
@@ -179,6 +185,7 @@
                                 IsSelected="@(SelectedMessage?.Id == message.Id)"
                                 IsChecked="@IsMessageSelected(message)"
                                 ShowId="false"
+                                ShowStandardColumns="true"
                                 OnRowClick="@SelectMessageAsync"
                                 OnCheckboxChanged="@ToggleMessageSelectionAsync" />
                 </Virtualize>
@@ -209,34 +216,43 @@
 
     @if (SelectedMessages.Count > 0)
     {
-        <div class="message-list-footer">
-            <div class="d-flex justify-content-between align-items-center">
-                <small class="text-muted">
-                    @SelectedMessages.Count selected
-                </small>
-                
-                <!-- Debug info -->
-                <small class="text-info">
-                    Debug: Selected=@SelectedMessages.Count, IsPaused=@IsPaused, Service=@(MessageOperationsService?.GetType().Name ?? "NULL"), ViewType=@ViewType
-                </small>
-                
-               
-                    <button class="btn btn-danger btn-sm"
-                            @onclick="ShowDeleteSelectedDialog"
-                            disabled="@IsDeleting"
-                            title="Delete selected messages">
-                        @if (IsDeleting)
-                        {
-                            <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>
-                            <text>Deleting...</text>
-                        }
-                        else
-                        {
-                            <i class="bi bi-trash3 me-1" aria-hidden="true"></i>
-                            <text>@GetDeleteButtonText()</text>
-                        }
-                    </button>
-               
+        <div class="message-list-footer message-selection-footer" role="status" aria-live="polite">
+            <small class="message-selection-count text-muted">
+                @SelectedMessages.Count selected
+            </small>
+
+            <div class="message-selection-actions">
+                <button class="btn btn-sm btn-outline-primary"
+                        @onclick="ShowExportSelectedDialog"
+                        disabled="@(IsExporting || IsDeleting || MessageOperationsService == null || SelectedQueue == null)"
+                        title="Export selected messages">
+                    @if (IsExporting)
+                    {
+                        <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>
+                        <text>Exporting...</text>
+                    }
+                    else
+                    {
+                        <i class="bi bi-download me-1" aria-hidden="true"></i>
+                        <text>Export</text>
+                    }
+                </button>
+
+                <button class="btn btn-danger btn-sm"
+                        @onclick="ShowDeleteSelectedDialog"
+                        disabled="@(IsDeleting || IsExporting)"
+                        title="Delete selected messages">
+                    @if (IsDeleting)
+                    {
+                        <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>
+                        <text>Deleting...</text>
+                    }
+                    else
+                    {
+                        <i class="bi bi-trash3 me-1" aria-hidden="true"></i>
+                        <text>Delete</text>
+                    }
+                </button>
             </div>
         </div>
     }
@@ -253,3 +269,11 @@
                         OnConfirm="@(async (result) => await HandleDeleteConfirmationAsync(true))"
                         OnCancel="@(async (result) => await HandleDeleteConfirmationAsync(false))" />
 }
+
+<ExportMessagesDialog @bind-IsOpen="ShowExportConfirmation"
+                      MessageCount="@SelectedMessages.Count"
+                      @bind-FileName="ExportFileName"
+                      IsProcessing="@IsExporting"
+                      ErrorMessage="@ExportErrorMessage"
+                      OnConfirm="ExportSelectedMessagesAsync"
+                      OnCancel="HandleExportCancellationAsync" />

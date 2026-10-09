@@ -94,7 +94,7 @@ public class MessageDto
             ArrivedTime = message.ArrivedTime,
             SentTime = message.SentTime,
             QueuePath = message.QueuePath,
-            BodySize = message.Body.SizeBytes,
+            BodySize = message.BodySizeBytes ?? message.Body.SizeBytes,
             FormattedSize = message.FormattedSize,
             CorrelationId = message.CorrelationId,
             Recoverable = message.Recoverable,

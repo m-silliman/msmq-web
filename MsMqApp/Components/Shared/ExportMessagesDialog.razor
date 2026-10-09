@@ -1,0 +1,82 @@
+@namespace MsMqApp.Components.Shared
+@inherits ExportMessagesDialogBase
+
+@if (IsOpen)
+{
+    <div class="confirmation-dialog-backdrop show" @onclick="OnBackdropClickAsync"></div>
+
+    <div class="confirmation-dialog show"
+         role="dialog"
+         aria-labelledby="@DialogTitleId"
+         aria-describedby="@DialogMessageId"
+         aria-modal="true">
+        <div class="confirmation-dialog-header header-info">
+            <div class="dialog-header-icon">
+                <i class="bi bi-file-earmark-zip-fill" aria-hidden="true"></i>
+            </div>
+            <h5 class="dialog-title" id="@DialogTitleId">Export Messages</h5>
+            <button type="button"
+                    class="btn-close"
+                    @onclick="OnCancelAsync"
+                    aria-label="Close"
+                    disabled="@IsProcessing">
+            </button>
+        </div>
+
+        <div class="confirmation-dialog-body" id="@DialogMessageId">
+            <p class="dialog-message">
+                Export <strong>@MessageCount selected message@(MessageCount == 1 ? "" : "s")</strong>
+                as a ZIP download. Each message will be stored as a separate JSON file.
+            </p>
+
+            <div class="mb-3">
+                <label for="@FileNameInputId" class="form-label">Download filename</label>
+                <div class="input-group">
+                    <input id="@FileNameInputId"
+                           class="form-control"
+                           value="@FileName"
+                           @oninput="OnFileNameChangedAsync"
+                           disabled="@IsProcessing"
+                           autocomplete="off"
+                           spellcheck="false" />
+                    <span class="input-group-text">.zip</span>
+                </div>
+                <small class="form-text text-muted">
+                    Message files use the format <code>label-messageid.json</code>.
+                </small>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <div class="alert alert-danger mb-0" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+                    @ErrorMessage
+                </div>
+            }
+        </div>
+
+        <div class="confirmation-dialog-footer">
+            <button type="button"
+                    class="btn btn-secondary"
+                    @onclick="OnCancelAsync"
+                    disabled="@IsProcessing">
+                Cancel
+            </button>
+            <button type="button"
+                    class="btn btn-primary"
+                    @onclick="OnConfirmAsync"
+                    disabled="@(IsProcessing || !IsFileNameValid)">
+                @if (IsProcessing)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span>Preparing...</span>
+                }
+                else
+                {
+                    <i class="bi bi-download me-1" aria-hidden="true"></i>
+                    <span>Download ZIP</span>
+                }
+            </button>
+        </div>
+    </div>
+}
