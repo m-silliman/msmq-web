@@ -11,6 +11,8 @@ namespace MsMqApp.Components.Shared;
 /// </summary>
 public class MessageBodyViewerBase : ComponentBase, IAsyncDisposable
 {
+    [Parameter] public EventCallback OnTearOff { get; set; }
+
     private MessageBodyFormat _selectedFormat = MessageBodyFormat.Unknown;
     private bool _showCopySuccess;
     private System.Timers.Timer? _copySuccessTimer;

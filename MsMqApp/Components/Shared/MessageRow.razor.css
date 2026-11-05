@@ -220,3 +220,6 @@
 [data-bs-theme="dark"] .message-row-checked {
     background-color: rgba(var(--bs-primary-rgb), 0.15);
 }
+
+.message-cell-label:has(.message-viewer-button) { position: relative; padding-left: 32px; }
+.message-viewer-button { position: absolute; left: 3px; top: 50%; transform: translateY(-50%); }

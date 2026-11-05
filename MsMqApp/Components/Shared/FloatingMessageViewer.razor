@@ -1,0 +1,74 @@
+@namespace MsMqApp.Components.Shared
+@using MsMqApp.Models.Domain
+@using MsMqApp.Services.Interfaces
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject IMsmqService MsmqService
+
+<section @ref="Window" class="floating-message-viewer" role="dialog" aria-modal="false" aria-label="Message viewer: @Message.Label"
+         style="left: @(32 + Offset)px; top: @(48 + Offset)px;">
+    <header class="floating-viewer-header">
+        <div class="floating-viewer-title"><strong>@Message.Label</strong><small title="@Message.QueuePath">@Message.Id</small></div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-maximize title="Maximize or restore" aria-label="Maximize or restore"><i class="bi bi-arrows-fullscreen" aria-hidden="true"></i></button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => OnClose.InvokeAsync()" title="Close viewer" aria-label="Close viewer"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </header>
+    @if (Error != null)
+    {
+        <div class="alert alert-warning m-2" role="alert">@Error</div>
+    }
+    <div class="floating-viewer-body"><MessageBodyViewer MessageBody="@Body" IsLoading="@Loading" /></div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public QueueMessage Message { get; set; } = default!;
+    [Parameter] public int Offset { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    private ElementReference Window;
+    private IJSObjectReference? Module;
+    private MessageBody? Body;
+    private bool Loading;
+    private string? Error;
+    private readonly CancellationTokenSource Lifetime = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Body = Message.Body;
+        if (Message.IsBodyLoaded) return;
+        Loading = true;
+        try
+        {
+            var result = Message.LookupId != 0
+                ? await MsmqService.GetMessageByLookupIdAsync(Message.QueuePath, Message.LookupId, cancellationToken: Lifetime.Token)
+                : await MsmqService.GetMessageByIdAsync(Message.QueuePath, Message.Id, cancellationToken: Lifetime.Token);
+            if (result.Success && result.Data != null) Body = result.Data.Body;
+            else Error = result.ErrorMessage ?? "The message is no longer available.";
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception) { Error = "Unable to load this message. Close the viewer and try again."; }
+        finally { Loading = false; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            Module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/floating-message-viewer.js");
+            if (Lifetime.IsCancellationRequested) { await Module.DisposeAsync(); Module = null; return; }
+            await Module.InvokeVoidAsync("attach", Window);
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Lifetime.Cancel();
+        if (Module != null)
+        {
+            try { await Module.InvokeVoidAsync("detach", Window); await Module.DisposeAsync(); }
+            catch (JSDisconnectedException) { }
+        }
+        Lifetime.Dispose();
+    }
+}

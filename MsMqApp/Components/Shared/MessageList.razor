@@ -204,6 +204,7 @@
                                 CustomColumns="@VisibleCustomColumns"
                                 CustomValues="@GetCustomValues(message)"
                                 GridTemplateColumns="@GetGridTemplateColumns()"
+                                OnViewMessage="@OnViewMessage"
                                 OnRowClick="@SelectMessageAsync"
                                 OnCheckboxChanged="@ToggleMessageSelectionAsync" />
                 </Virtualize>

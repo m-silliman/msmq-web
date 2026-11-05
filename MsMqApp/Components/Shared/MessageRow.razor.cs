@@ -11,6 +11,7 @@ namespace MsMqApp.Components.Shared;
 /// </summary>
 public class MessageRowBase : ComponentBase
 {
+    [Parameter] public EventCallback<QueueMessage> OnViewMessage { get; set; }
     /// <summary>
     /// Gets or sets the message to display.
     /// </summary>

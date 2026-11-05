@@ -108,6 +108,7 @@
                              SelectedQueue="@SelectedQueue"
                              ViewType="@CurrentViewType"
                              SelectedMessage="@SelectedMessage"
+                             OnViewMessage="@OpenMessageViewerAsync"
                              OnMessageSelected="@HandleMessageSelectedAsync"
                              OnSelectionChanged="@HandleSelectionChangedAsync"
                              OnRefresh="@RefreshMessagesAsync"
@@ -121,10 +122,16 @@
         </div>
     </div>
 
+    @foreach (var viewer in MessageViewers)
+    {
+        <FloatingMessageViewer @key="viewer.Key" Message="@viewer.Message" Offset="@viewer.Offset"
+                               OnClose="@(() => { MessageViewers.Remove(viewer); })" />
+    }
     <!-- Message Detail Drawer -->
     <MessageDetail Message="@SelectedMessage"
                    IsOpen="@IsDetailDrawerOpen"
                    IsOpenChanged="@((bool value) => IsDetailDrawerOpen = value)"
+                   OnViewMessage="@TearOffMessageAsync"
                    OnClose="@CloseDetailDrawerAsync"
                    OnDelete="@HandleDeleteMessageAsync"
                    OnMove="@HandleMoveMessageAsync"

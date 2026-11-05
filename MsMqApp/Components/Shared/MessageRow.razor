@@ -11,6 +11,13 @@
     </div>
 
     <div class="message-row-cell message-cell-label" title="@Message.Label">
+        @if (OnViewMessage.HasDelegate)
+        {
+            <button type="button" class="message-viewer-button btn btn-sm btn-link py-0 px-1 me-1" title="Open floating message viewer"
+                    aria-label="View message: @Message.Label" @onclick="() => OnViewMessage.InvokeAsync(Message)" @onclick:stopPropagation="true">
+                <i class="bi bi-window" aria-hidden="true"></i>
+            </button>
+        }
         <span class="message-label-text">@Message.Label</span>
         @if (ShowId)
         {

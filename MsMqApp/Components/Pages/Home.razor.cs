@@ -749,6 +749,21 @@ private const string OutgoingQueueReadNotSupportedMessage = "Outgoing queues sup
     /// <summary>
     /// Handles message selection from the list.
     /// </summary>
+    protected record ViewerEntry(Guid Key, QueueMessage Message, int Offset);
+    protected List<ViewerEntry> MessageViewers { get; } = new();
+
+    protected Task OpenMessageViewerAsync(QueueMessage message)
+    {
+        MessageViewers.Add(new(Guid.NewGuid(), message, MessageViewers.Count % 8 * 28));
+        return Task.CompletedTask;
+    }
+
+    protected async Task TearOffMessageAsync(QueueMessage message)
+    {
+        await OpenMessageViewerAsync(message);
+        await CloseDetailDrawerAsync();
+    }
+
     protected async Task HandleMessageSelectedAsync(QueueMessage? message)
     {
         _detailRequest?.Cancel();

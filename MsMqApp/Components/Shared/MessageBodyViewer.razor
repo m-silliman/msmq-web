@@ -19,6 +19,13 @@
         </div>
 
         <div class="toolbar-end">
+            @if (OnTearOff.HasDelegate)
+            {
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => OnTearOff.InvokeAsync()"
+                        title="Open floating message viewer" aria-label="Open floating message viewer">
+                    <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                </button>
+            }
             @if (!string.IsNullOrEmpty(FormattedContent))
             {
                 <button type="button"

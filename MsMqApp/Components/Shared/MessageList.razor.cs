@@ -14,6 +14,7 @@ namespace MsMqApp.Components.Shared;
 /// </summary>
 public class MessageListBase : ComponentBase, IAsyncDisposable
 {
+    [Parameter] public EventCallback<QueueMessage> OnViewMessage { get; set; }
     private string _searchQuery = string.Empty;
     private string _currentSortColumn = "ArrivedTime";
     private bool _sortAscending = false;

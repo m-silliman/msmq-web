@@ -1,0 +1,14 @@
+.floating-message-viewer {
+    position: fixed; z-index: 1060; width: min(900px, calc(100vw - 32px)); height: calc(100dvh - 100px);
+    min-width: min(340px, calc(100vw - 16px)); min-height: 220px;
+    max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px);
+    display: flex; flex-direction: column; resize: both; overflow: hidden;
+    border: 1px solid var(--app-border-color); border-radius: 6px;
+    background: var(--app-bg-primary); color: var(--app-text-primary); box-shadow: 0 12px 40px #0005;
+}
+.floating-viewer-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--app-bg-secondary); cursor: move; touch-action: none; }
+.floating-viewer-title { flex: 1; min-width: 0; }
+.floating-viewer-title strong, .floating-viewer-title small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.floating-viewer-body { flex: 1; min-height: 0; padding: 0 8px 8px; }
+.floating-viewer-body ::deep .body-viewer-content { min-height: 0; }
+.floating-message-viewer.maximized { left: 8px !important; top: 8px !important; width: calc(100vw - 16px) !important; height: calc(100dvh - 16px) !important; resize: none; }
